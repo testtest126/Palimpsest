@@ -1,0 +1,102 @@
+{
+  "boardSize" : 13,
+  "points" : [
+    {
+      "marks" : [
+        {
+          "age" : 0,
+          "color" : "white",
+          "sessionLaid" : 1
+        }
+      ],
+      "residue" : 0,
+      "x" : 1,
+      "y" : 2
+    },
+    {
+      "marks" : [
+        {
+          "age" : 0,
+          "color" : "white",
+          "sessionLaid" : 1
+        }
+      ],
+      "residue" : 0,
+      "x" : 8,
+      "y" : 6
+    },
+    {
+      "marks" : [
+        {
+          "age" : 0,
+          "color" : "black",
+          "sessionLaid" : 1
+        }
+      ],
+      "residue" : 0,
+      "x" : 9,
+      "y" : 6
+    },
+    {
+      "marks" : [
+        {
+          "age" : 0,
+          "color" : "white",
+          "sessionLaid" : 1
+        }
+      ],
+      "residue" : 0,
+      "x" : 8,
+      "y" : 9
+    },
+    {
+      "marks" : [
+        {
+          "age" : 0,
+          "color" : "black",
+          "sessionLaid" : 1
+        }
+      ],
+      "residue" : 0,
+      "x" : 9,
+      "y" : 9
+    },
+    {
+      "marks" : [
+        {
+          "age" : 0,
+          "color" : "white",
+          "sessionLaid" : 1
+        }
+      ],
+      "residue" : 0,
+      "x" : 11,
+      "y" : 9
+    },
+    {
+      "marks" : [
+        {
+          "age" : 0,
+          "color" : "black",
+          "sessionLaid" : 1
+        }
+      ],
+      "residue" : 0,
+      "x" : 12,
+      "y" : 9
+    },
+    {
+      "marks" : [
+        {
+          "age" : 0,
+          "color" : "black",
+          "sessionLaid" : 1
+        }
+      ],
+      "residue" : 0,
+      "x" : 5,
+      "y" : 10
+    }
+  ],
+  "sessionIndex" : 1
+}
