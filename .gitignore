@@ -1,0 +1,10 @@
+# macOS
+.DS_Store
+
+# Swift Package Manager
+PalimpsestKit/.build/
+PalimpsestKit/.swiftpm/
+PalimpsestKit/Package.resolved
+
+# misc
+*.log
