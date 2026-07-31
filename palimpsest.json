@@ -4,7 +4,7 @@
     {
       "marks" : [
         {
-          "age" : 0,
+          "age" : 1,
           "color" : "white",
           "sessionLaid" : 1
         }
@@ -16,7 +16,7 @@
     {
       "marks" : [
         {
-          "age" : 0,
+          "age" : 1,
           "color" : "white",
           "sessionLaid" : 1
         }
@@ -28,7 +28,7 @@
     {
       "marks" : [
         {
-          "age" : 0,
+          "age" : 1,
           "color" : "black",
           "sessionLaid" : 1
         }
@@ -40,9 +40,14 @@
     {
       "marks" : [
         {
-          "age" : 0,
+          "age" : 1,
           "color" : "white",
           "sessionLaid" : 1
+        },
+        {
+          "age" : 0,
+          "color" : "black",
+          "sessionLaid" : 2
         }
       ],
       "residue" : 0,
@@ -52,9 +57,14 @@
     {
       "marks" : [
         {
-          "age" : 0,
+          "age" : 1,
           "color" : "black",
           "sessionLaid" : 1
+        },
+        {
+          "age" : 0,
+          "color" : "black",
+          "sessionLaid" : 2
         }
       ],
       "residue" : 0,
@@ -64,7 +74,7 @@
     {
       "marks" : [
         {
-          "age" : 0,
+          "age" : 1,
           "color" : "white",
           "sessionLaid" : 1
         }
@@ -76,9 +86,14 @@
     {
       "marks" : [
         {
-          "age" : 0,
+          "age" : 1,
           "color" : "black",
           "sessionLaid" : 1
+        },
+        {
+          "age" : 0,
+          "color" : "white",
+          "sessionLaid" : 2
         }
       ],
       "residue" : 0,
@@ -88,7 +103,7 @@
     {
       "marks" : [
         {
-          "age" : 0,
+          "age" : 1,
           "color" : "black",
           "sessionLaid" : 1
         }
@@ -96,7 +111,67 @@
       "residue" : 0,
       "x" : 5,
       "y" : 10
+    },
+    {
+      "marks" : [
+        {
+          "age" : 0,
+          "color" : "white",
+          "sessionLaid" : 2
+        }
+      ],
+      "residue" : 0,
+      "x" : 6,
+      "y" : 2
+    },
+    {
+      "marks" : [
+        {
+          "age" : 0,
+          "color" : "black",
+          "sessionLaid" : 2
+        }
+      ],
+      "residue" : 0,
+      "x" : 7,
+      "y" : 9
+    },
+    {
+      "marks" : [
+        {
+          "age" : 0,
+          "color" : "white",
+          "sessionLaid" : 2
+        }
+      ],
+      "residue" : 0,
+      "x" : 10,
+      "y" : 9
+    },
+    {
+      "marks" : [
+        {
+          "age" : 0,
+          "color" : "white",
+          "sessionLaid" : 2
+        }
+      ],
+      "residue" : 0,
+      "x" : 8,
+      "y" : 10
+    },
+    {
+      "marks" : [
+        {
+          "age" : 0,
+          "color" : "black",
+          "sessionLaid" : 2
+        }
+      ],
+      "residue" : 0,
+      "x" : 9,
+      "y" : 10
     }
   ],
-  "sessionIndex" : 1
+  "sessionIndex" : 2
 }
