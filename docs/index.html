@@ -93,6 +93,30 @@ header.hero::before{content:"";position:absolute;inset:0;opacity:.5;pointer-even
   gap:8px 16px;margin-top:16px;font-family:var(--sans)}
 .render-card .caption .who{font-size:13.5px;color:var(--ink);font-weight:600}
 .render-card .caption .meta{font-size:12.5px;color:var(--ink-soft)}
+.render-card .board-frame svg{cursor:pointer;touch-action:none}
+#ghostLayer{transition:opacity .5s ease}
+#hoverPreview{transition:opacity .12s ease}
+
+/* ---------- play controls ---------- */
+.controls{margin-top:18px;padding-top:16px;border-top:1px solid var(--line-soft);font-family:var(--sans)}
+.controls .status-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 18px;font-size:13.5px}
+.controls .turn{font-weight:600;color:var(--ink);display:inline-flex;align-items:center}
+.controls .turn .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;
+  background:var(--ink-soft);border:1px solid var(--line);flex:none}
+.controls .caps{color:var(--ink-soft);white-space:nowrap}
+.controls .caps b{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
+.controls .button-row{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-top:14px}
+.controls button, .controls select{font-family:var(--sans);font-size:12.5px;padding:7px 14px;border-radius:99px;
+  border:1px solid var(--line);background:var(--surface-2);color:var(--ink);cursor:pointer;line-height:1.3}
+.controls button:hover{border-color:var(--accent);color:var(--accent)}
+.controls button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.controls label.ghost-toggle{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);
+  padding:7px 12px}
+.controls label.ghost-toggle input{accent-color:var(--accent)}
+.controls select:disabled, .controls label.ghost-toggle.is-disabled{opacity:.4;pointer-events:none}
+.controls .feedback{min-height:16px;margin-top:10px;font-size:12.5px;color:var(--scar);opacity:0;
+  transition:opacity .25s ease}
+.controls .feedback.show{opacity:1}
 
 /* ---------- panels (what's built / what's next — informational, not links) ---------- */
 .panels{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:40px}
@@ -167,10 +191,10 @@ footer .prov b{color:var(--ink);font-weight:600}
 
     <div class="render-card">
       <div class="board-frame">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900.00 900.00" width="900" height="900" role="img" aria-label="The current Palimpsest board: crisp present-session stones over fading ghost strata from earlier sessions">
-        <title>Palimpsest — session 8</title>
+        <svg id="boardSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900.00 900.00" width="900" height="900" role="img" aria-label="The Palimpsest board — click to play a live game of Go over the remembered strata">
+        <title id="boardTitle">Palimpsest — session 40</title>
         <rect x="0" y="0" width="900.00" height="900.00" fill="#C8A96A" rx="14"/>
-        <g stroke="#6E5530" stroke-opacity="0.55" stroke-width="1.5">
+        <g id="gridLines" stroke="#6E5530" stroke-opacity="0.55" stroke-width="1.5">
         <line x1="64.00" y1="64.00" x2="64.00" y2="836.00"/>
         <line x1="64.00" y1="64.00" x2="836.00" y2="64.00"/>
         <line x1="128.33" y1="64.00" x2="128.33" y2="836.00"/>
@@ -198,109 +222,293 @@ footer .prov b{color:var(--ink);font-weight:600}
         <line x1="836.00" y1="64.00" x2="836.00" y2="836.00"/>
         <line x1="64.00" y1="836.00" x2="836.00" y2="836.00"/>
         </g>
-        <g fill="#6E5530">
+        <g id="hoshiPoints" fill="#6E5530">
         <circle cx="257.00" cy="257.00" r="4.5"/>
         <circle cx="257.00" cy="643.00" r="4.5"/>
         <circle cx="643.00" cy="257.00" r="4.5"/>
         <circle cx="643.00" cy="643.00" r="4.5"/>
         <circle cx="450.00" cy="450.00" r="4.5"/>
         </g>
-        <circle cx="192.67" cy="64.00" r="28.31" fill="#1A1A1A" fill-opacity="0.72"/>
-        <circle cx="257.00" cy="64.00" r="28.31" fill="#1A1A1A" fill-opacity="0.72"/>
-        <circle cx="192.67" cy="128.33" r="28.31" fill="#F4F1EA" fill-opacity="0.72"/>
-        <circle cx="192.67" cy="128.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.72" stroke-width="1.4"/>
-        <circle cx="128.33" cy="192.67" r="28.31" fill="#F4F1EA" fill-opacity="0.10"/>
-        <circle cx="128.33" cy="192.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.10" stroke-width="1.4"/>
-        <circle cx="450.00" cy="192.67" r="28.31" fill="#F4F1EA" fill-opacity="0.14"/>
-        <circle cx="450.00" cy="192.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.14" stroke-width="1.4"/>
-        <circle cx="707.33" cy="257.00" r="28.31" fill="#F4F1EA" fill-opacity="0.52"/>
-        <circle cx="707.33" cy="257.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.52" stroke-width="1.4"/>
-        <circle cx="707.33" cy="321.33" r="28.31" fill="#F4F1EA" fill-opacity="0.37"/>
-        <circle cx="707.33" cy="321.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.37" stroke-width="1.4"/>
-        <circle cx="707.33" cy="321.33" r="28.31" fill="#F4F1EA" fill-opacity="0.52"/>
-        <circle cx="707.33" cy="321.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.52" stroke-width="1.4"/>
-        <circle cx="771.67" cy="321.33" r="28.31" fill="#1A1A1A" fill-opacity="0.37"/>
-        <circle cx="771.67" cy="321.33" r="28.31" fill="#F4F1EA" fill-opacity="0.52"/>
-        <circle cx="771.67" cy="321.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.52" stroke-width="1.4"/>
-        <circle cx="771.67" cy="321.33" r="28.31" fill="#1A1A1A" fill-opacity="1.00"/>
-        <circle cx="450.00" cy="385.67" r="28.31" fill="#1A1A1A" fill-opacity="0.72"/>
-        <circle cx="707.33" cy="385.67" r="28.31" fill="#1A1A1A" fill-opacity="0.52"/>
-        <circle cx="771.67" cy="385.67" r="28.31" fill="#1A1A1A" fill-opacity="1.00"/>
-        <circle cx="450.00" cy="450.00" r="28.31" fill="#F4F1EA" fill-opacity="0.52"/>
-        <circle cx="450.00" cy="450.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.52" stroke-width="1.4"/>
-        <circle cx="514.33" cy="450.00" r="28.31" fill="#1A1A1A" fill-opacity="0.52"/>
-        <circle cx="578.67" cy="450.00" r="28.31" fill="#F4F1EA" fill-opacity="0.10"/>
-        <circle cx="578.67" cy="450.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.10" stroke-width="1.4"/>
-        <circle cx="643.00" cy="450.00" r="28.31" fill="#1A1A1A" fill-opacity="0.10"/>
-        <circle cx="707.33" cy="450.00" r="28.31" fill="#1A1A1A" fill-opacity="1.00"/>
-        <circle cx="771.67" cy="450.00" r="28.31" fill="#F4F1EA" fill-opacity="1.00"/>
-        <circle cx="771.67" cy="450.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="1.00" stroke-width="1.4"/>
-        <circle cx="836.00" cy="450.00" r="28.31" fill="#1A1A1A" fill-opacity="1.00"/>
-        <circle cx="514.33" cy="514.33" r="28.31" fill="#F4F1EA" fill-opacity="0.72"/>
-        <circle cx="514.33" cy="514.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.72" stroke-width="1.4"/>
-        <circle cx="514.33" cy="514.33" r="28.31" fill="#F4F1EA" fill-opacity="1.00"/>
-        <circle cx="514.33" cy="514.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="1.00" stroke-width="1.4"/>
-        <circle cx="578.67" cy="514.33" r="28.31" fill="#1A1A1A" fill-opacity="0.37"/>
-        <circle cx="771.67" cy="514.33" r="28.31" fill="#F4F1EA" fill-opacity="1.00"/>
-        <circle cx="771.67" cy="514.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="1.00" stroke-width="1.4"/>
-        <circle cx="836.00" cy="514.33" r="28.31" fill="#1A1A1A" fill-opacity="1.00"/>
-        <circle cx="128.33" cy="578.67" r="28.31" fill="#F4F1EA" fill-opacity="0.19"/>
-        <circle cx="128.33" cy="578.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.19" stroke-width="1.4"/>
-        <circle cx="514.33" cy="578.67" r="28.31" fill="#F4F1EA" fill-opacity="0.72"/>
-        <circle cx="514.33" cy="578.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.72" stroke-width="1.4"/>
-        <circle cx="578.67" cy="578.67" r="28.31" fill="#1A1A1A" fill-opacity="0.37"/>
-        <circle cx="578.67" cy="578.67" r="28.31" fill="#1A1A1A" fill-opacity="0.72"/>
-        <circle cx="643.00" cy="578.67" r="28.31" fill="#F4F1EA" fill-opacity="0.37"/>
-        <circle cx="643.00" cy="578.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.37" stroke-width="1.4"/>
-        <circle cx="707.33" cy="578.67" r="28.31" fill="#F4F1EA" fill-opacity="0.37"/>
-        <circle cx="707.33" cy="578.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.37" stroke-width="1.4"/>
-        <circle cx="771.67" cy="578.67" r="28.31" fill="#F4F1EA" fill-opacity="1.00"/>
-        <circle cx="771.67" cy="578.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="1.00" stroke-width="1.4"/>
-        <circle cx="64.00" cy="643.00" r="28.31" fill="#1A1A1A" fill-opacity="0.19"/>
-        <circle cx="128.33" cy="643.00" r="28.31" fill="#1A1A1A" fill-opacity="0.19"/>
-        <circle cx="514.33" cy="643.00" r="28.31" fill="#1A1A1A" fill-opacity="0.14"/>
-        <circle cx="578.67" cy="643.00" r="28.31" fill="#F4F1EA" fill-opacity="0.10"/>
-        <circle cx="578.67" cy="643.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.10" stroke-width="1.4"/>
-        <circle cx="578.67" cy="643.00" r="28.31" fill="#1A1A1A" fill-opacity="0.14"/>
-        <circle cx="643.00" cy="643.00" r="28.31" fill="#1A1A1A" fill-opacity="0.10"/>
-        <circle cx="643.00" cy="643.00" r="28.31" fill="#1A1A1A" fill-opacity="0.14"/>
-        <circle cx="707.33" cy="643.00" r="28.31" fill="#F4F1EA" fill-opacity="0.14"/>
-        <circle cx="707.33" cy="643.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.14" stroke-width="1.4"/>
-        <circle cx="707.33" cy="643.00" r="28.31" fill="#1A1A1A" fill-opacity="0.37"/>
-        <circle cx="771.67" cy="643.00" r="28.31" fill="#F4F1EA" fill-opacity="0.10"/>
-        <circle cx="771.67" cy="643.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.10" stroke-width="1.4"/>
-        <circle cx="836.00" cy="643.00" r="28.31" fill="#1A1A1A" fill-opacity="0.10"/>
-        <circle cx="836.00" cy="643.00" r="28.31" fill="#F4F1EA" fill-opacity="0.14"/>
-        <circle cx="836.00" cy="643.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.14" stroke-width="1.4"/>
-        <circle cx="385.67" cy="707.33" r="28.31" fill="#1A1A1A" fill-opacity="0.10"/>
-        <circle cx="578.67" cy="707.33" r="28.31" fill="#F4F1EA" fill-opacity="0.14"/>
-        <circle cx="578.67" cy="707.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.14" stroke-width="1.4"/>
+        <g id="ghostLayer">
+        <circle cx="64.00" cy="64.00" r="28.31" fill="#F4F1EA" fill-opacity="0.52"/>
+        <circle cx="64.00" cy="64.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.52" stroke-width="1.4"/>
+        <circle cx="128.33" cy="64.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="128.33" cy="64.00" r="28.31" fill="#1A1A1A" fill-opacity="0.52"/>
+        <circle cx="192.67" cy="64.00" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="257.00" cy="64.00" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="321.33" cy="64.00" r="28.31" fill="#F4F1EA" fill-opacity="0.37"/>
+        <circle cx="321.33" cy="64.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.37" stroke-width="1.4"/>
+        <circle cx="385.67" cy="64.00" r="28.31" fill="#1A1A1A" fill-opacity="0.37"/>
+        <circle cx="450.00" cy="64.00" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="514.33" cy="64.00" r="28.31" fill="#1A1A1A" fill-opacity="0.52"/>
+        <circle cx="578.67" cy="64.00" r="28.31" fill="#1A1A1A" fill-opacity="0.52"/>
+        <circle cx="643.00" cy="64.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="643.00" cy="64.00" r="28.31" fill="#F4F1EA" fill-opacity="0.52"/>
+        <circle cx="643.00" cy="64.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.52" stroke-width="1.4"/>
+        <circle cx="771.67" cy="64.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="771.67" cy="64.00" r="28.31" fill="#F4F1EA" fill-opacity="0.10"/>
+        <circle cx="771.67" cy="64.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.10" stroke-width="1.4"/>
+        <circle cx="836.00" cy="64.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="836.00" cy="64.00" r="20.38" fill="none" stroke="#7A3B2E" stroke-opacity="0.18" stroke-width="2.5"/>
+        <circle cx="64.00" cy="128.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="128.33" cy="128.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="128.33" cy="128.33" r="28.31" fill="#1A1A1A" fill-opacity="0.10"/>
+        <circle cx="128.33" cy="128.33" r="28.31" fill="#1A1A1A" fill-opacity="0.52"/>
+        <circle cx="192.67" cy="128.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="257.00" cy="128.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="450.00" cy="128.33" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="578.67" cy="128.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="643.00" cy="128.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="771.67" cy="128.33" r="28.31" fill="#F4F1EA" fill-opacity="0.10"/>
+        <circle cx="771.67" cy="128.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.10" stroke-width="1.4"/>
+        <circle cx="836.00" cy="128.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="836.00" cy="128.33" r="28.31" fill="#F4F1EA" fill-opacity="0.10"/>
+        <circle cx="836.00" cy="128.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.10" stroke-width="1.4"/>
+        <circle cx="64.00" cy="192.67" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="64.00" cy="192.67" r="28.31" fill="#F4F1EA" fill-opacity="0.52"/>
+        <circle cx="64.00" cy="192.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.52" stroke-width="1.4"/>
+        <circle cx="128.33" cy="192.67" r="25.48" fill="#5C4A2E" fill-opacity="0.15"/>
+        <circle cx="128.33" cy="192.67" r="28.31" fill="#F4F1EA" fill-opacity="0.52"/>
+        <circle cx="128.33" cy="192.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.52" stroke-width="1.4"/>
+        <circle cx="192.67" cy="192.67" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="257.00" cy="192.67" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="385.67" cy="192.67" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="385.67" cy="192.67" r="28.31" fill="#F4F1EA" fill-opacity="0.05"/>
+        <circle cx="385.67" cy="192.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.05" stroke-width="1.4"/>
+        <circle cx="450.00" cy="192.67" r="25.48" fill="#5C4A2E" fill-opacity="0.12"/>
+        <circle cx="707.33" cy="192.67" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="836.00" cy="192.67" r="28.31" fill="#1A1A1A" fill-opacity="0.10"/>
+        <circle cx="64.00" cy="257.00" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="128.33" cy="257.00" r="25.48" fill="#5C4A2E" fill-opacity="0.12"/>
+        <circle cx="192.67" cy="257.00" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="257.00" cy="257.00" r="28.31" fill="#1A1A1A" fill-opacity="0.37"/>
+        <circle cx="385.67" cy="257.00" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="385.67" cy="257.00" r="28.31" fill="#F4F1EA" fill-opacity="0.27"/>
+        <circle cx="385.67" cy="257.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.27" stroke-width="1.4"/>
+        <circle cx="450.00" cy="257.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="514.33" cy="257.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="514.33" cy="257.00" r="28.31" fill="#1A1A1A" fill-opacity="0.27"/>
+        <circle cx="578.67" cy="257.00" r="28.31" fill="#F4F1EA" fill-opacity="0.19"/>
+        <circle cx="578.67" cy="257.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.19" stroke-width="1.4"/>
+        <circle cx="707.33" cy="257.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="64.00" cy="321.33" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="128.33" cy="321.33" r="25.48" fill="#5C4A2E" fill-opacity="0.12"/>
+        <circle cx="192.67" cy="321.33" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="192.67" cy="321.33" r="28.31" fill="#1A1A1A" fill-opacity="0.05"/>
+        <circle cx="257.00" cy="321.33" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="257.00" cy="321.33" r="28.31" fill="#1A1A1A" fill-opacity="0.05"/>
+        <circle cx="321.33" cy="321.33" r="28.31" fill="#F4F1EA" fill-opacity="0.05"/>
+        <circle cx="321.33" cy="321.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.05" stroke-width="1.4"/>
+        <circle cx="321.33" cy="321.33" r="28.31" fill="#F4F1EA" fill-opacity="0.27"/>
+        <circle cx="321.33" cy="321.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.27" stroke-width="1.4"/>
+        <circle cx="385.67" cy="321.33" r="28.31" fill="#1A1A1A" fill-opacity="0.27"/>
+        <circle cx="450.00" cy="321.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="514.33" cy="321.33" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="514.33" cy="321.33" r="28.31" fill="#F4F1EA" fill-opacity="0.27"/>
+        <circle cx="514.33" cy="321.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.27" stroke-width="1.4"/>
+        <circle cx="578.67" cy="321.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="578.67" cy="321.33" r="28.31" fill="#1A1A1A" fill-opacity="0.19"/>
+        <circle cx="643.00" cy="321.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="643.00" cy="321.33" r="28.31" fill="#F4F1EA" fill-opacity="0.19"/>
+        <circle cx="643.00" cy="321.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.19" stroke-width="1.4"/>
+        <circle cx="707.33" cy="321.33" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="771.67" cy="321.33" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="64.00" cy="385.67" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="64.00" cy="385.67" r="28.31" fill="#1A1A1A" fill-opacity="0.14"/>
+        <circle cx="64.00" cy="385.67" r="28.31" fill="#1A1A1A" fill-opacity="0.27"/>
+        <circle cx="64.00" cy="385.67" r="28.31" fill="#F4F1EA" fill-opacity="0.72"/>
+        <circle cx="64.00" cy="385.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.72" stroke-width="1.4"/>
+        <circle cx="128.33" cy="385.67" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="128.33" cy="385.67" r="28.31" fill="#F4F1EA" fill-opacity="0.27"/>
+        <circle cx="128.33" cy="385.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.27" stroke-width="1.4"/>
+        <circle cx="192.67" cy="385.67" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="192.67" cy="385.67" r="28.31" fill="#1A1A1A" fill-opacity="0.05"/>
+        <circle cx="450.00" cy="385.67" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="514.33" cy="385.67" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="514.33" cy="385.67" r="28.31" fill="#1A1A1A" fill-opacity="0.37"/>
+        <circle cx="578.67" cy="385.67" r="28.31" fill="#1A1A1A" fill-opacity="0.27"/>
+        <circle cx="643.00" cy="385.67" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="643.00" cy="385.67" r="28.31" fill="#1A1A1A" fill-opacity="0.19"/>
+        <circle cx="707.33" cy="385.67" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="771.67" cy="385.67" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="836.00" cy="385.67" r="28.31" fill="#F4F1EA" fill-opacity="0.05"/>
+        <circle cx="836.00" cy="385.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.05" stroke-width="1.4"/>
+        <circle cx="64.00" cy="450.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="128.33" cy="450.00" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="192.67" cy="450.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="321.33" cy="450.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="385.67" cy="450.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="450.00" cy="450.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="514.33" cy="450.00" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="514.33" cy="450.00" r="28.31" fill="#F4F1EA" fill-opacity="0.37"/>
+        <circle cx="514.33" cy="450.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.37" stroke-width="1.4"/>
+        <circle cx="578.67" cy="450.00" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="578.67" cy="450.00" r="28.31" fill="#1A1A1A" fill-opacity="0.52"/>
+        <circle cx="643.00" cy="450.00" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="643.00" cy="450.00" r="28.31" fill="#1A1A1A" fill-opacity="0.07"/>
+        <circle cx="707.33" cy="450.00" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="771.67" cy="450.00" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="771.67" cy="450.00" r="28.31" fill="#1A1A1A" fill-opacity="0.19"/>
+        <circle cx="836.00" cy="450.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="836.00" cy="450.00" r="28.31" fill="#F4F1EA" fill-opacity="0.05"/>
+        <circle cx="836.00" cy="450.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.05" stroke-width="1.4"/>
+        <circle cx="836.00" cy="450.00" r="28.31" fill="#F4F1EA" fill-opacity="0.07"/>
+        <circle cx="836.00" cy="450.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.07" stroke-width="1.4"/>
+        <circle cx="257.00" cy="514.33" r="28.31" fill="#1A1A1A" fill-opacity="1.00"/>
+        <circle cx="385.67" cy="514.33" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="385.67" cy="514.33" r="28.31" fill="#1A1A1A" fill-opacity="1.00"/>
+        <circle cx="450.00" cy="514.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="514.33" cy="514.33" r="25.48" fill="#5C4A2E" fill-opacity="0.15"/>
+        <circle cx="578.67" cy="514.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="578.67" cy="514.33" r="28.31" fill="#F4F1EA" fill-opacity="0.27"/>
+        <circle cx="578.67" cy="514.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.27" stroke-width="1.4"/>
+        <circle cx="643.00" cy="514.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="643.00" cy="514.33" r="28.31" fill="#1A1A1A" fill-opacity="0.07"/>
+        <circle cx="707.33" cy="514.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="707.33" cy="514.33" r="28.31" fill="#F4F1EA" fill-opacity="0.07"/>
+        <circle cx="707.33" cy="514.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.07" stroke-width="1.4"/>
+        <circle cx="771.67" cy="514.33" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="771.67" cy="514.33" r="28.31" fill="#F4F1EA" fill-opacity="0.07"/>
+        <circle cx="771.67" cy="514.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.07" stroke-width="1.4"/>
+        <circle cx="771.67" cy="514.33" r="28.31" fill="#1A1A1A" fill-opacity="0.19"/>
+        <circle cx="836.00" cy="514.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="836.00" cy="514.33" r="28.31" fill="#F4F1EA" fill-opacity="0.05"/>
+        <circle cx="836.00" cy="514.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.05" stroke-width="1.4"/>
+        <circle cx="836.00" cy="514.33" r="28.31" fill="#F4F1EA" fill-opacity="0.19"/>
+        <circle cx="836.00" cy="514.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.19" stroke-width="1.4"/>
+        <circle cx="128.33" cy="578.67" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="192.67" cy="578.67" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="257.00" cy="578.67" r="28.31" fill="#F4F1EA" fill-opacity="0.07"/>
+        <circle cx="257.00" cy="578.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.07" stroke-width="1.4"/>
+        <circle cx="321.33" cy="578.67" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="321.33" cy="578.67" r="28.31" fill="#F4F1EA" fill-opacity="1.00"/>
+        <circle cx="321.33" cy="578.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="1.00" stroke-width="1.4"/>
+        <circle cx="385.67" cy="578.67" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="385.67" cy="578.67" r="28.31" fill="#F4F1EA" fill-opacity="1.00"/>
+        <circle cx="385.67" cy="578.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="1.00" stroke-width="1.4"/>
+        <circle cx="450.00" cy="578.67" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="514.33" cy="578.67" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="514.33" cy="578.67" r="28.31" fill="#F4F1EA" fill-opacity="0.14"/>
+        <circle cx="514.33" cy="578.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.14" stroke-width="1.4"/>
+        <circle cx="578.67" cy="578.67" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="578.67" cy="578.67" r="28.31" fill="#1A1A1A" fill-opacity="0.27"/>
+        <circle cx="643.00" cy="578.67" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="707.33" cy="578.67" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="707.33" cy="578.67" r="28.31" fill="#1A1A1A" fill-opacity="0.07"/>
+        <circle cx="771.67" cy="578.67" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="771.67" cy="578.67" r="28.31" fill="#F4F1EA" fill-opacity="0.07"/>
+        <circle cx="771.67" cy="578.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.07" stroke-width="1.4"/>
+        <circle cx="64.00" cy="643.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="128.33" cy="643.00" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="192.67" cy="643.00" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="257.00" cy="643.00" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="257.00" cy="643.00" r="28.31" fill="#1A1A1A" fill-opacity="0.37"/>
+        <circle cx="321.33" cy="643.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="385.67" cy="643.00" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="450.00" cy="643.00" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="450.00" cy="643.00" r="28.31" fill="#1A1A1A" fill-opacity="0.05"/>
+        <circle cx="514.33" cy="643.00" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="514.33" cy="643.00" r="28.31" fill="#1A1A1A" fill-opacity="0.05"/>
+        <circle cx="514.33" cy="643.00" r="28.31" fill="#F4F1EA" fill-opacity="0.14"/>
+        <circle cx="514.33" cy="643.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.14" stroke-width="1.4"/>
+        <circle cx="514.33" cy="643.00" r="28.31" fill="#F4F1EA" fill-opacity="0.72"/>
+        <circle cx="514.33" cy="643.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.72" stroke-width="1.4"/>
+        <circle cx="578.67" cy="643.00" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="643.00" cy="643.00" r="25.48" fill="#5C4A2E" fill-opacity="0.12"/>
+        <circle cx="707.33" cy="643.00" r="25.48" fill="#5C4A2E" fill-opacity="0.15"/>
+        <circle cx="771.67" cy="643.00" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="836.00" cy="643.00" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="128.33" cy="707.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="192.67" cy="707.33" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="257.00" cy="707.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="257.00" cy="707.33" r="28.31" fill="#F4F1EA" fill-opacity="0.37"/>
+        <circle cx="257.00" cy="707.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.37" stroke-width="1.4"/>
+        <circle cx="321.33" cy="707.33" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="385.67" cy="707.33" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="450.00" cy="707.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="450.00" cy="707.33" r="28.31" fill="#1A1A1A" fill-opacity="0.14"/>
+        <circle cx="514.33" cy="707.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="514.33" cy="707.33" r="28.31" fill="#F4F1EA" fill-opacity="0.14"/>
+        <circle cx="514.33" cy="707.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.14" stroke-width="1.4"/>
+        <circle cx="514.33" cy="707.33" r="28.31" fill="#F4F1EA" fill-opacity="0.72"/>
+        <circle cx="514.33" cy="707.33" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.72" stroke-width="1.4"/>
+        <circle cx="578.67" cy="707.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="578.67" cy="707.33" r="28.31" fill="#1A1A1A" fill-opacity="0.14"/>
+        <circle cx="643.00" cy="707.33" r="25.48" fill="#5C4A2E" fill-opacity="0.12"/>
         <circle cx="643.00" cy="707.33" r="28.31" fill="#1A1A1A" fill-opacity="0.14"/>
-        <circle cx="643.00" cy="707.33" r="28.31" fill="#1A1A1A" fill-opacity="0.52"/>
-        <circle cx="707.33" cy="707.33" r="28.31" fill="#1A1A1A" fill-opacity="0.52"/>
-        <circle cx="385.67" cy="771.67" r="28.31" fill="#F4F1EA" fill-opacity="0.27"/>
-        <circle cx="385.67" cy="771.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.27" stroke-width="1.4"/>
-        <circle cx="450.00" cy="771.67" r="28.31" fill="#F4F1EA" fill-opacity="0.19"/>
-        <circle cx="450.00" cy="771.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.19" stroke-width="1.4"/>
-        <circle cx="450.00" cy="771.67" r="28.31" fill="#F4F1EA" fill-opacity="0.27"/>
-        <circle cx="450.00" cy="771.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.27" stroke-width="1.4"/>
-        <circle cx="514.33" cy="771.67" r="28.31" fill="#F4F1EA" fill-opacity="0.19"/>
-        <circle cx="514.33" cy="771.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.19" stroke-width="1.4"/>
-        <circle cx="514.33" cy="771.67" r="28.31" fill="#1A1A1A" fill-opacity="0.27"/>
-        <circle cx="578.67" cy="771.67" r="28.31" fill="#1A1A1A" fill-opacity="0.19"/>
-        <circle cx="578.67" cy="771.67" r="28.31" fill="#1A1A1A" fill-opacity="0.27"/>
-        <circle cx="643.00" cy="771.67" r="28.31" fill="#1A1A1A" fill-opacity="0.27"/>
-        <circle cx="643.00" cy="771.67" r="28.31" fill="#1A1A1A" fill-opacity="0.52"/>
-        <circle cx="385.67" cy="836.00" r="28.31" fill="#1A1A1A" fill-opacity="0.27"/>
-        <circle cx="450.00" cy="836.00" r="28.31" fill="#F4F1EA" fill-opacity="0.27"/>
-        <circle cx="450.00" cy="836.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.27" stroke-width="1.4"/>
-        <circle cx="514.33" cy="836.00" r="28.31" fill="#F4F1EA" fill-opacity="0.27"/>
-        <circle cx="514.33" cy="836.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.27" stroke-width="1.4"/>
+        <circle cx="643.00" cy="707.33" r="28.31" fill="#1A1A1A" fill-opacity="0.72"/>
+        <circle cx="707.33" cy="707.33" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="771.67" cy="707.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="836.00" cy="707.33" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="128.33" cy="771.67" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="192.67" cy="771.67" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="257.00" cy="771.67" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="321.33" cy="771.67" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="385.67" cy="771.67" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="450.00" cy="771.67" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="514.33" cy="771.67" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="514.33" cy="771.67" r="28.31" fill="#1A1A1A" fill-opacity="0.72"/>
+        <circle cx="578.67" cy="771.67" r="25.48" fill="#5C4A2E" fill-opacity="0.15"/>
+        <circle cx="578.67" cy="771.67" r="28.31" fill="#1A1A1A" fill-opacity="0.72"/>
+        <circle cx="578.67" cy="771.67" r="28.31" fill="#F4F1EA" fill-opacity="1.00"/>
+        <circle cx="578.67" cy="771.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="1.00" stroke-width="1.4"/>
+        <circle cx="643.00" cy="771.67" r="25.48" fill="#5C4A2E" fill-opacity="0.15"/>
+        <circle cx="643.00" cy="771.67" r="28.31" fill="#F4F1EA" fill-opacity="0.14"/>
+        <circle cx="643.00" cy="771.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.14" stroke-width="1.4"/>
+        <circle cx="643.00" cy="771.67" r="28.31" fill="#F4F1EA" fill-opacity="0.72"/>
+        <circle cx="643.00" cy="771.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.72" stroke-width="1.4"/>
+        <circle cx="643.00" cy="771.67" r="28.31" fill="#1A1A1A" fill-opacity="1.00"/>
+        <circle cx="707.33" cy="771.67" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="707.33" cy="771.67" r="28.31" fill="#F4F1EA" fill-opacity="0.72"/>
+        <circle cx="707.33" cy="771.67" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.72" stroke-width="1.4"/>
+        <circle cx="771.67" cy="771.67" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="836.00" cy="771.67" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="64.00" cy="836.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="64.00" cy="836.00" r="28.31" fill="#1A1A1A" fill-opacity="0.07"/>
+        <circle cx="64.00" cy="836.00" r="28.31" fill="#F4F1EA" fill-opacity="0.52"/>
+        <circle cx="64.00" cy="836.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.52" stroke-width="1.4"/>
+        <circle cx="128.33" cy="836.00" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="128.33" cy="836.00" r="28.31" fill="#1A1A1A" fill-opacity="0.07"/>
+        <circle cx="192.67" cy="836.00" r="25.48" fill="#5C4A2E" fill-opacity="0.09"/>
+        <circle cx="257.00" cy="836.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="385.67" cy="836.00" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="385.67" cy="836.00" r="28.31" fill="#1A1A1A" fill-opacity="0.37"/>
+        <circle cx="450.00" cy="836.00" r="25.48" fill="#5C4A2E" fill-opacity="0.06"/>
+        <circle cx="514.33" cy="836.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="578.67" cy="836.00" r="28.31" fill="#1A1A1A" fill-opacity="0.72"/>
+        <circle cx="578.67" cy="836.00" r="28.31" fill="#1A1A1A" fill-opacity="1.00"/>
+        <circle cx="707.33" cy="836.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        <circle cx="707.33" cy="836.00" r="28.31" fill="#1A1A1A" fill-opacity="0.72"/>
+        <circle cx="771.67" cy="836.00" r="28.31" fill="#F4F1EA" fill-opacity="0.37"/>
+        <circle cx="771.67" cy="836.00" r="28.31" fill="none" stroke="#1A1A1A" stroke-opacity="0.37" stroke-width="1.4"/>
+        <circle cx="836.00" cy="836.00" r="25.48" fill="#5C4A2E" fill-opacity="0.03"/>
+        </g>
+        <g id="liveLayer"></g>
+        <circle id="hoverPreview" r="0" opacity="0" pointer-events="none"/>
         </svg>
       </div>
       <div class="caption">
-        <span class="who">The player, mid-thought</span>
-        <span class="meta">session 8 &middot; 13&times;13 &middot; rendered straight from <code style="font-family:var(--mono)">palimpsest.json</code></span>
+        <span class="who" id="captionWho">The player, mid-thought</span>
+        <span class="meta" id="captionMeta">session 40 &middot; 13&times;13 &middot; rendered straight from <code style="font-family:var(--mono)">palimpsest.json</code></span>
+      </div>
+
+      <div class="controls">
+        <div class="status-row">
+          <span class="turn" id="turnIndicator"><span class="dot" id="turnDot"></span>Click the board to begin — you play Black, against the player</span>
+          <span class="caps" id="captureCounts">Black captured <b>0</b> &middot; White captured <b>0</b></span>
+        </div>
+        <div class="button-row">
+          <button type="button" id="btnPass">Pass</button>
+          <button type="button" id="btnReset">New game</button>
+          <button type="button" id="btnAutoplay" aria-pressed="false">Watch it play itself &#9656;</button>
+          <label class="ghost-toggle"><input type="checkbox" id="chkGhosts" checked> ghosts</label>
+          <select id="selSize" aria-label="Board size">
+            <option value="9">9&times;9</option>
+            <option value="13" selected>13&times;13</option>
+            <option value="19">19&times;19</option>
+          </select>
+        </div>
+        <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
       </div>
     </div>
   </div>
@@ -365,11 +573,11 @@ footer .prov b{color:var(--ink);font-weight:600}
 
   <div class="glance">
     <div class="sec-eyebrow">At a glance</div>
-    <h3>Eight sessions in, and already layered</h3>
+    <h3>Forty sessions in, and settling into scar tissue</h3>
     <div class="facts">
-      <div class="fact"><b>8</b><span>sessions run so far, each committed as it happened</span></div>
-      <div class="fact"><b>48</b><span>points on the board carrying some trace of memory</span></div>
-      <div class="fact"><b>62</b><span>individual marks laid across those sessions, at every age</span></div>
+      <div class="fact"><b>40</b><span>sessions run so far, batched in and committed as they landed</span></div>
+      <div class="fact"><b>140</b><span>points on the board carrying some trace of memory</span></div>
+      <div class="fact"><b>1</b><span>scar so far — the piece's first capture, still healing</span></div>
       <div class="fact"><b>13&times;13</b><span>board size — small enough to read, large enough to breathe</span></div>
     </div>
     <p class="note">This page is a single self-contained file — no external fonts, scripts,
@@ -388,6 +596,405 @@ footer .prov b{color:var(--ink);font-weight:600}
   </footer>
 
 </main>
+
+<script>
+(function(){
+  'use strict';
+  var VIEW = 900, MARGIN = 64;
+  var HOSHI = {
+    9:  [[2,2],[2,6],[6,2],[6,6],[4,4]],
+    13: [[3,3],[3,9],[9,3],[9,9],[6,6]],
+    19: [[3,3],[3,9],[3,15],[9,3],[9,9],[9,15],[15,3],[15,9],[15,15]]
+  };
+
+  var svg = document.getElementById('boardSvg');
+  var gridG = document.getElementById('gridLines');
+  var hoshiG = document.getElementById('hoshiPoints');
+  var ghostLayer = document.getElementById('ghostLayer');
+  var liveLayer = document.getElementById('liveLayer');
+  var hoverPreview = document.getElementById('hoverPreview');
+  var boardTitle = document.getElementById('boardTitle');
+  var GHOST_13_HTML = ghostLayer.innerHTML;
+
+  var captionWho = document.getElementById('captionWho');
+  var captionMeta = document.getElementById('captionMeta');
+  var turnIndicator = document.getElementById('turnIndicator');
+  var turnDot = document.getElementById('turnDot');
+  var captureCounts = document.getElementById('captureCounts');
+  var feedback = document.getElementById('feedback');
+  var btnPass = document.getElementById('btnPass');
+  var btnReset = document.getElementById('btnReset');
+  var btnAutoplay = document.getElementById('btnAutoplay');
+  var chkGhosts = document.getElementById('chkGhosts');
+  var selSize = document.getElementById('selSize');
+
+  var N = 13;
+  var cell = (VIEW - 2 * MARGIN) / (N - 1);
+  var mode = 'painting';   // 'painting' | 'live'
+  var ghostsOn = true;
+  var autoplay = false;
+  var autoplayTimer = null;
+  var aiTimer = null;
+  var engine = null;
+
+  function pointX(x){ return MARGIN + x * cell; }
+  function pointY(y){ return MARGIN + y * cell; }
+  function idx(x, y, size){ return y * size + x; }
+
+  function neighborsOf(x, y, size){
+    var out = [];
+    if (x > 0) out.push([x - 1, y]);
+    if (x < size - 1) out.push([x + 1, y]);
+    if (y > 0) out.push([x, y - 1]);
+    if (y < size - 1) out.push([x, y + 1]);
+    return out;
+  }
+
+  function groupInfo(board, size, x, y){
+    var color = board[idx(x, y, size)];
+    var stones = [], liberties = {}, libCount = 0;
+    var seen = {}; seen[idx(x, y, size)] = true;
+    var stack = [[x, y]];
+    while (stack.length){
+      var p = stack.pop(), cx = p[0], cy = p[1];
+      stones.push(idx(cx, cy, size));
+      var nbs = neighborsOf(cx, cy, size);
+      for (var i = 0; i < nbs.length; i++){
+        var nx = nbs[i][0], ny = nbs[i][1], ni = idx(nx, ny, size), nv = board[ni];
+        if (nv === 0){ if (!liberties[ni]){ liberties[ni] = true; libCount++; } }
+        else if (nv === color && !seen[ni]){ seen[ni] = true; stack.push([nx, ny]); }
+      }
+    }
+    return { stones: stones, libCount: libCount };
+  }
+
+  function boardKey(board){ return board.join(''); }
+
+  // Pure — never mutates board/koBan. Returns a legality verdict plus,
+  // when legal, the resulting board so callers decide whether to commit it.
+  function evaluateMove(board, size, koBan, x, y, color){
+    var i = idx(x, y, size);
+    if (board[i] !== 0) return { legal: false, reason: 'occupied' };
+    var opp = color === 1 ? 2 : 1;
+    var newBoard = board.slice();
+    newBoard[i] = color;
+    var seenOpp = {}, captured = [];
+    var nbs = neighborsOf(x, y, size);
+    for (var k = 0; k < nbs.length; k++){
+      var nx = nbs[k][0], ny = nbs[k][1], ni = idx(nx, ny, size);
+      if (newBoard[ni] === opp && !seenOpp[ni]){
+        var g = groupInfo(newBoard, size, nx, ny);
+        for (var s = 0; s < g.stones.length; s++) seenOpp[g.stones[s]] = true;
+        if (g.libCount === 0) captured = captured.concat(g.stones);
+      }
+    }
+    for (var c = 0; c < captured.length; c++) newBoard[captured[c]] = 0;
+    var ownGroup = groupInfo(newBoard, size, x, y);
+    if (ownGroup.libCount === 0) return { legal: false, reason: 'suicide' };
+    var newKey = boardKey(newBoard);
+    if (koBan !== null && newKey === koBan) return { legal: false, reason: 'ko' };
+    // Classic ko shape: a single stone just captured a single stone into
+    // a single remaining liberty — the only case a positional ko can recur.
+    var newKoBan = null;
+    if (captured.length === 1 && ownGroup.stones.length === 1 && ownGroup.libCount === 1){
+      newKoBan = boardKey(board);
+    }
+    return { legal: true, newBoard: newBoard, captured: captured, newKoBan: newKoBan };
+  }
+
+  function legalMovesFor(eng, color){
+    var moves = [];
+    for (var y = 0; y < eng.N; y++){
+      for (var x = 0; x < eng.N; x++){
+        if (eng.board[idx(x, y, eng.N)] !== 0) continue;
+        var r = evaluateMove(eng.board, eng.N, eng.koBan, x, y, color);
+        if (r.legal) moves.push({ x: x, y: y });
+      }
+    }
+    return moves;
+  }
+
+  function hasStoneNeighbor(eng, x, y){
+    var nbs = neighborsOf(x, y, eng.N);
+    for (var i = 0; i < nbs.length; i++){
+      if (eng.board[idx(nbs[i][0], nbs[i][1], eng.N)] !== 0) return true;
+    }
+    return false;
+  }
+
+  // Port of PalimpsestKit's SoftPolicy: mostly organic clustering, never a
+  // strong search — this page's "the player" should feel like the same
+  // hand that laid the ghosts, not a Go engine.
+  function softPolicyChoose(eng, color){
+    var legal = legalMovesFor(eng, color);
+    if (legal.length === 0) return null;
+    var clustered = legal.filter(function(m){ return hasStoneNeighbor(eng, m.x, m.y); });
+    var pool = (clustered.length > 0 && Math.random() < 0.7) ? clustered : legal;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  function newEngine(size){
+    return {
+      N: size,
+      board: new Array(size * size).fill(0),
+      turn: 1,
+      captures: { 1: 0, 2: 0 },
+      koBan: null,
+      passCount: 0,
+      lastMove: null,
+      locked: false
+    };
+  }
+
+  function applyMove(eng, x, y, color){
+    var r = evaluateMove(eng.board, eng.N, eng.koBan, x, y, color);
+    if (!r.legal) return r;
+    eng.board = r.newBoard;
+    eng.koBan = r.newKoBan;
+    eng.captures[color] += r.captured.length;
+    eng.turn = color === 1 ? 2 : 1;
+    eng.passCount = 0;
+    eng.lastMove = { x: x, y: y, color: color };
+    return r;
+  }
+
+  function applyPass(eng){
+    eng.passCount++;
+    eng.turn = eng.turn === 1 ? 2 : 1;
+    eng.koBan = null;
+    eng.lastMove = null;
+  }
+
+  // ---------- rendering ----------
+  function rebuildGridAndHoshi(){
+    var gridHtml = '';
+    for (var i = 0; i < N; i++){
+      var p = pointX(i).toFixed(2);
+      gridHtml += '<line x1="' + p + '" y1="' + MARGIN.toFixed(2) + '" x2="' + p + '" y2="' + (VIEW - MARGIN).toFixed(2) + '"/>';
+      gridHtml += '<line x1="' + MARGIN.toFixed(2) + '" y1="' + p + '" x2="' + (VIEW - MARGIN).toFixed(2) + '" y2="' + p + '"/>';
+    }
+    gridG.innerHTML = gridHtml;
+    var hoshiHtml = '';
+    (HOSHI[N] || []).forEach(function(pt){
+      hoshiHtml += '<circle cx="' + pointX(pt[0]).toFixed(2) + '" cy="' + pointY(pt[1]).toFixed(2) + '" r="4.5"/>';
+    });
+    hoshiG.innerHTML = hoshiHtml;
+  }
+
+  function renderStones(){
+    var html = '';
+    var r = (cell * 0.44).toFixed(2);
+    for (var y = 0; y < engine.N; y++){
+      for (var x = 0; x < engine.N; x++){
+        var v = engine.board[idx(x, y, engine.N)];
+        if (v === 0) continue;
+        var cx = pointX(x).toFixed(2), cy = pointY(y).toFixed(2);
+        if (v === 1){
+          html += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="var(--stone-black)"/>';
+        } else {
+          html += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="var(--stone-white)" stroke="var(--stone-black)" stroke-width="1.4"/>';
+        }
+        if (engine.lastMove && engine.lastMove.x === x && engine.lastMove.y === y){
+          var markColor = v === 1 ? 'var(--stone-white)' : 'var(--stone-black)';
+          html += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (cell * 0.14).toFixed(2) + '" fill="none" stroke="' + markColor + '" stroke-opacity="0.55" stroke-width="1.5"/>';
+        }
+      }
+    }
+    liveLayer.innerHTML = html;
+  }
+
+  function updateGhostVisibility(){
+    if (N !== 13){ ghostLayer.style.display = 'none'; return; }
+    ghostLayer.style.display = ghostsOn ? '' : 'none';
+    ghostLayer.style.opacity = (mode === 'live') ? '0.32' : '1';
+  }
+
+  function showFeedback(msg){
+    feedback.textContent = msg;
+    feedback.classList.add('show');
+    clearTimeout(showFeedback._t);
+    showFeedback._t = setTimeout(function(){ feedback.classList.remove('show'); }, 2800);
+  }
+
+  function reasonMessage(reason){
+    if (reason === 'occupied') return 'That point already has a stone.';
+    if (reason === 'suicide') return 'That would leave no liberties — illegal suicide.';
+    if (reason === 'ko') return 'Ko — the board looked exactly like that a move ago.';
+    return 'Illegal move.';
+  }
+
+  function updateStatusUI(){
+    captureCounts.innerHTML = 'Black captured <b>' + engine.captures[1] + '</b> &middot; White captured <b>' + engine.captures[2] + '</b>';
+    if (mode === 'painting'){
+      turnDot.style.background = 'var(--ink-soft)';
+      turnIndicator.lastChild.textContent = 'Click the board to begin — you play Black, against the player';
+      captionWho.textContent = 'The player, mid-thought';
+      captionMeta.textContent = 'session 40 · 13×13 · rendered straight from palimpsest.json';
+      boardTitle.textContent = 'Palimpsest — session 40';
+      return;
+    }
+    turnDot.style.background = engine.turn === 1 ? 'var(--stone-black)' : 'var(--stone-white)';
+    var label;
+    if (autoplay) label = 'Watching — ' + (engine.turn === 1 ? 'black' : 'white') + ' to move';
+    else if (engine.locked) label = 'The player is thinking…';
+    else label = engine.turn === 1 ? 'Black to move (you)' : 'White to move (the player)';
+    turnIndicator.lastChild.textContent = label;
+    captionWho.textContent = autoplay ? 'Watching the player play itself' : 'Live — a real game, not saved';
+    captionMeta.textContent = N + '×' + N + ' · unsaved — resets on New game';
+    boardTitle.textContent = 'Palimpsest — live game';
+  }
+
+  function enterLiveMode(){
+    if (mode === 'live') return;
+    mode = 'live';
+    updateGhostVisibility();
+  }
+
+  function clearHover(){ hoverPreview.setAttribute('opacity', '0'); }
+
+  function afterMoveApplied(){
+    renderStones();
+    updateStatusUI();
+    if (engine.passCount >= 2){
+      showFeedback('Both sides passed. The player rests.');
+      return true;
+    }
+    return false;
+  }
+
+  function scheduleAiReply(){
+    engine.locked = true;
+    updateStatusUI();
+    aiTimer = setTimeout(aiRespond, 550);
+  }
+
+  function aiRespond(){
+    if (mode !== 'live' || autoplay) return;
+    var mv = softPolicyChoose(engine, 2);
+    if (mv === null) applyPass(engine);
+    else applyMove(engine, mv.x, mv.y, 2);
+    engine.locked = false;
+    afterMoveApplied();
+  }
+
+  // ---------- pointer handling ----------
+  function pointFromEvent(evt){
+    var rect = svg.getBoundingClientRect();
+    var scale = VIEW / rect.width;
+    var localX = (evt.clientX - rect.left) * scale;
+    var localY = (evt.clientY - rect.top) * scale;
+    var pad = cell * 0.5;
+    if (localX < MARGIN - pad || localX > VIEW - MARGIN + pad ||
+        localY < MARGIN - pad || localY > VIEW - MARGIN + pad){
+      return null;
+    }
+    var gx = Math.round((localX - MARGIN) / cell);
+    var gy = Math.round((localY - MARGIN) / cell);
+    if (gx < 0 || gx >= N || gy < 0 || gy >= N) return null;
+    return { x: gx, y: gy };
+  }
+
+  svg.addEventListener('mousemove', function(evt){
+    if (autoplay || engine.locked){ clearHover(); return; }
+    var p = pointFromEvent(evt);
+    if (!p || engine.board[idx(p.x, p.y, N)] !== 0){ clearHover(); return; }
+    hoverPreview.setAttribute('cx', pointX(p.x).toFixed(2));
+    hoverPreview.setAttribute('cy', pointY(p.y).toFixed(2));
+    hoverPreview.setAttribute('r', (cell * 0.44).toFixed(2));
+    hoverPreview.setAttribute('fill', engine.turn === 2 ? 'var(--stone-white)' : 'var(--stone-black)');
+    hoverPreview.setAttribute('opacity', '0.28');
+  });
+  svg.addEventListener('mouseleave', clearHover);
+
+  svg.addEventListener('click', function(evt){
+    if (autoplay){ showFeedback('Stop watching to play a move yourself.'); return; }
+    if (engine.locked){ showFeedback('The player is still thinking.'); return; }
+    if (engine.turn !== 1){ return; }
+    var p = pointFromEvent(evt);
+    if (!p) return;
+    if (mode === 'painting') enterLiveMode();
+    var r = applyMove(engine, p.x, p.y, 1);
+    if (!r.legal){ showFeedback(reasonMessage(r.reason)); return; }
+    clearHover();
+    if (afterMoveApplied()) return;
+    if (engine.turn === 2) scheduleAiReply();
+  });
+
+  // ---------- controls ----------
+  btnPass.addEventListener('click', function(){
+    if (autoplay || engine.locked || engine.turn !== 1) return;
+    if (mode === 'painting') enterLiveMode();
+    applyPass(engine);
+    if (afterMoveApplied()) return;
+    if (engine.turn === 2) scheduleAiReply();
+  });
+
+  function stopAutoplay(){
+    if (autoplayTimer){ clearInterval(autoplayTimer); autoplayTimer = null; }
+    autoplay = false;
+    btnAutoplay.innerHTML = 'Watch it play itself &#9656;';
+    btnAutoplay.setAttribute('aria-pressed', 'false');
+  }
+
+  function resetBoard(){
+    stopAutoplay();
+    clearTimeout(aiTimer);
+    engine = newEngine(N);
+    mode = (N === 13) ? 'painting' : 'live';
+    liveLayer.innerHTML = '';
+    clearHover();
+    updateGhostVisibility();
+    updateStatusUI();
+  }
+  btnReset.addEventListener('click', resetBoard);
+
+  btnAutoplay.addEventListener('click', function(){
+    if (autoplay){ stopAutoplay(); updateStatusUI(); return; }
+    clearTimeout(aiTimer);
+    engine.locked = false;
+    if (mode === 'painting') enterLiveMode();
+    autoplay = true;
+    btnAutoplay.innerHTML = 'Stop watching &#10074;&#10074;';
+    btnAutoplay.setAttribute('aria-pressed', 'true');
+    updateStatusUI();
+    autoplayTimer = setInterval(function(){
+      if (engine.passCount >= 2){ stopAutoplay(); updateStatusUI(); return; }
+      var color = engine.turn;
+      var mv = softPolicyChoose(engine, color);
+      if (mv === null) applyPass(engine); else applyMove(engine, mv.x, mv.y, color);
+      renderStones();
+      updateStatusUI();
+    }, 650);
+  });
+
+  chkGhosts.addEventListener('change', function(){
+    ghostsOn = chkGhosts.checked;
+    updateGhostVisibility();
+  });
+
+  selSize.addEventListener('change', function(){
+    stopAutoplay();
+    clearTimeout(aiTimer);
+    N = parseInt(selSize.value, 10);
+    cell = (VIEW - 2 * MARGIN) / (N - 1);
+    rebuildGridAndHoshi();
+    ghostLayer.innerHTML = (N === 13) ? GHOST_13_HTML : '';
+    chkGhosts.disabled = (N !== 13);
+    chkGhosts.closest('label').classList.toggle('is-disabled', N !== 13);
+    engine = newEngine(N);
+    mode = (N === 13) ? 'painting' : 'live';
+    liveLayer.innerHTML = '';
+    clearHover();
+    updateGhostVisibility();
+    updateStatusUI();
+  });
+
+  // ---------- init ----------
+  engine = newEngine(N);
+  updateGhostVisibility();
+  updateStatusUI();
+})();
+</script>
 
 </body>
 </html>
