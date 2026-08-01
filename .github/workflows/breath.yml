@@ -1,0 +1,43 @@
+name: Daily breath
+
+# The piece's own daily "breath": advance exactly one session, re-render,
+# splice the new strata into the published docs/index.html, commit, push.
+# This workflow is the SOLE scheduled writer — nothing else advances
+# sessions on a timer, to avoid double-breathing the same day.
+
+on:
+  schedule:
+    # 06:03 UTC daily. GitHub Actions cron is UTC-only and can slip by a few
+    # minutes under load — both fine for a generative art piece with no
+    # real-time stakes.
+    - cron: "3 6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: palimpsest-breath
+  cancel-in-progress: false
+
+jobs:
+  breathe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "5.10"
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run one breath
+        run: ./breath.sh
