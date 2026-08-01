@@ -521,6 +521,8 @@ footer .prov b{color:var(--ink);font-weight:600}
         <div class="button-row">
           <button type="button" id="btnPass">Pass</button>
           <button type="button" id="btnReset">New game</button>
+          <button type="button" id="btnSaveSGF" disabled title="Play at least one move to export">Save as SGF &#128190;</button>
+          <button type="button" id="btnSaveImage" disabled title="Play at least one move to export">Save image &#128247;</button>
           <button type="button" id="btnAutoplay" aria-pressed="false">Watch it play itself &#9656;</button>
           <button type="button" id="btnTimeline" aria-pressed="false">Timeline &#8987;</button>
           <button type="button" id="btnSound" aria-pressed="false" aria-label="Toggle sound">Sound: off &#128263;</button>
@@ -655,6 +657,8 @@ footer .prov b{color:var(--ink);font-weight:600}
   var feedback = document.getElementById('feedback');
   var btnPass = document.getElementById('btnPass');
   var btnReset = document.getElementById('btnReset');
+  var btnSaveSGF = document.getElementById('btnSaveSGF');
+  var btnSaveImage = document.getElementById('btnSaveImage');
   var btnAutoplay = document.getElementById('btnAutoplay');
   var btnTimeline = document.getElementById('btnTimeline');
   var timelineRow = document.getElementById('timelineRow');
@@ -762,6 +766,111 @@ footer .prov b{color:var(--ink);font-weight:600}
   function playTimelineTick(){
     if (!soundOn || !ensureAudio()) return;
     playPartial({ type: 'sine', freq: 660, filterFreq: 2400, duration: 0.05, attack: 0.002, peak: 0.12 });
+  }
+
+  // ---------- export: keep a game before the board forgets it ----------
+  function dateStamp(){
+    var d = new Date();
+    var pad = function(n){ return (n < 10 ? '0' : '') + n; };
+    return String(d.getFullYear()) + pad(d.getMonth() + 1) + pad(d.getDate());
+  }
+
+  function downloadBlob(filename, blob){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  }
+
+  // SGF coordinates are letters, one per axis, 'a' = 0 — same top-left
+  // origin the board's own (x, y) already use, so this is a direct mapping,
+  // no flipping needed. (Boards here top out at 19, well within a-z.)
+  function sgfCoord(x, y){
+    return String.fromCharCode(97 + x) + String.fromCharCode(97 + y);
+  }
+
+  function sgfEscape(s){
+    return String(s).replace(/\\/g, '\\\\').replace(/\]/g, '\\]');
+  }
+
+  function buildSGF(eng){
+    var header = ';GM[1]FF[4]CA[UTF-8]SZ[' + eng.N + ']AP[Palimpsest]' +
+      'GN[' + sgfEscape('Palimpsest — a game the board will forget') + ']' +
+      'C[' + sgfEscape('Played against the player at testtest126.github.io/Palimpsest. ' +
+        'Nobody wins here — this file is the only place this particular game outlasts the board.') + ']';
+    var moves = eng.history.map(function(m){
+      var tag = m.color === 1 ? 'B' : 'W';
+      var coord = m.pass ? '' : sgfCoord(m.x, m.y);
+      return ';' + tag + '[' + coord + ']';
+    }).join('');
+    return '(' + header + moves + ')\n';
+  }
+
+  function canExport(){
+    return mode === 'live' && !!engine && engine.history && engine.history.length > 0;
+  }
+
+  function updateExportButtons(){
+    var enabled = canExport();
+    btnSaveSGF.disabled = !enabled;
+    btnSaveImage.disabled = !enabled;
+  }
+
+  function exportSGF(){
+    if (!canExport()) return;
+    var blob = new Blob([buildSGF(engine)], { type: 'application/x-go-sgf' });
+    downloadBlob('palimpsest-' + dateStamp() + '.sgf', blob);
+  }
+
+  // Rasterizes the board exactly as currently shown (present stones, and
+  // ghosts/scars too if visible) at 2x for a crisp export. SVG -> Blob ->
+  // Image -> canvas -> PNG, all native, no libraries. Falls back to
+  // downloading the SVG itself if canvas rasterization isn't available for
+  // any reason, so the export never silently does nothing.
+  function exportImage(){
+    if (!canExport()) return;
+    var svgString = new XMLSerializer().serializeToString(svg);
+    if (svgString.indexOf('xmlns=') === -1){
+      svgString = svgString.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+    }
+    var stamp = dateStamp();
+    var svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+
+    var Canvas = window.HTMLCanvasElement;
+    if (!Canvas || !document.createElement('canvas').getContext){
+      downloadBlob('palimpsest-board-' + stamp + '.svg', svgBlob);
+      return;
+    }
+
+    var url = URL.createObjectURL(svgBlob);
+    var img = new Image();
+    img.onload = function(){
+      try {
+        var scale = 2;
+        var canvas = document.createElement('canvas');
+        canvas.width = VIEW * scale;
+        canvas.height = VIEW * scale;
+        var ctx2d = canvas.getContext('2d');
+        ctx2d.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(function(pngBlob){
+          if (pngBlob) downloadBlob('palimpsest-board-' + stamp + '.png', pngBlob);
+          else downloadBlob('palimpsest-board-' + stamp + '.svg', svgBlob);
+        }, 'image/png');
+      } catch (e){
+        URL.revokeObjectURL(url);
+        downloadBlob('palimpsest-board-' + stamp + '.svg', svgBlob);
+      }
+    };
+    img.onerror = function(){
+      URL.revokeObjectURL(url);
+      downloadBlob('palimpsest-board-' + stamp + '.svg', svgBlob);
+    };
+    img.src = url;
   }
 
   function pointX(x){ return MARGIN + x * cell; }
@@ -872,7 +981,8 @@ footer .prov b{color:var(--ink);font-weight:600}
       passCount: 0,
       moveCount: 0,
       lastMove: null,
-      locked: false
+      locked: false,
+      history: [] // ordered {color, x, y} or {color, pass:true} — for SGF export
     };
   }
 
@@ -886,10 +996,12 @@ footer .prov b{color:var(--ink);font-weight:600}
     eng.passCount = 0;
     eng.moveCount++;
     eng.lastMove = { x: x, y: y, color: color };
+    eng.history.push({ color: color, x: x, y: y });
     return r;
   }
 
   function applyPass(eng){
+    eng.history.push({ color: eng.turn, pass: true });
     eng.passCount++;
     eng.turn = eng.turn === 1 ? 2 : 1;
     eng.koBan = null;
@@ -1146,6 +1258,7 @@ footer .prov b{color:var(--ink);font-weight:600}
   }
 
   function updateStatusUI(){
+    updateExportButtons();
     if (mode === 'timeline'){
       var hist = loadHistory();
       var total = hist ? hist.sessions.length : timelineSession;
@@ -1284,6 +1397,9 @@ footer .prov b{color:var(--ink);font-weight:600}
     updateStatusUI();
   }
   btnReset.addEventListener('click', resetBoard);
+
+  btnSaveSGF.addEventListener('click', exportSGF);
+  btnSaveImage.addEventListener('click', exportImage);
 
   // When a self-play game ends (double pass, or MOVE_CAP as a hard safety
   // net so it never runs forever), let its stones settle toward a ghostly
