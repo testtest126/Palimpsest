@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>HyperGo — 3D Go prototype</title>
+<style>body{margin:0;padding:0}</style>
+</head>
+<body>
+
+<style>
+:root{
+  /* Same warm-goban identity as the main Palimpsest page — this is an
+     experiment living next to it, not a new visual language. */
+  --bg:#F1EADB; --surface:#FBF8F0; --surface-2:#E9DFC6;
+  --ink:#1B1712; --ink-soft:#6E6350; --line:#DCCEA9; --line-soft:#E7DCBE;
+  --accent:#8F502B; --accent-ink:#FFFFFF;
+  --stone-black:#1A1A1A; --stone-white:#F4F1EA;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --serif:"Iowan Old Style",Palatino,"Palatino Linotype","Book Antiqua",Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#1B140D; --surface:#241B12; --surface-2:#2E2216;
+    --ink:#F1EBDC; --ink-soft:#B4A688; --line:#3B2E1C; --line-soft:#2E2216;
+    --accent:#E3A467; --accent-ink:#1F1710;
+  }
+}
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--ink);font-family:var(--serif);margin:0;line-height:1.5;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin:0 auto;padding:0 24px 64px}
+h1,h2{text-wrap:balance;margin:0}
+a{color:var(--accent)}
+
+header{padding:40px 0 8px}
+header .eyebrow{font-family:var(--sans);font-size:12px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--accent);font-weight:600}
+header h1{font-size:clamp(28px,4vw,40px);font-weight:700;margin:10px 0 0}
+header p.lede{font-family:var(--sans);font-size:14.5px;color:var(--ink-soft);max-width:64em;margin:14px 0 0}
+header p.lede code{font-family:var(--mono);background:var(--surface-2);border:1px solid var(--line-soft);
+  border-radius:4px;padding:0 4px}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 24px;
+  margin-top:22px;box-shadow:0 10px 30px -20px rgba(20,14,4,.3)}
+
+.status-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 18px;
+  font-family:var(--sans);font-size:13.5px}
+.status-row .turn{font-weight:600;display:inline-flex;align-items:center}
+.status-row .turn .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;
+  background:var(--ink-soft);border:1px solid var(--line);flex:none}
+.status-row .caps{color:var(--ink-soft);white-space:nowrap}
+.status-row .caps b{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
+
+.button-row{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-top:14px}
+.button-row button, .button-row select{font-family:var(--sans);font-size:12.5px;padding:7px 14px;
+  border-radius:99px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);
+  cursor:pointer;line-height:1.3}
+.button-row button:hover{border-color:var(--accent);color:var(--accent)}
+.button-row button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.button-row button:disabled{opacity:.4;pointer-events:none}
+
+.feedback{min-height:16px;margin-top:10px;font-family:var(--sans);font-size:12.5px;color:var(--accent);
+  opacity:0;transition:opacity .25s ease}
+.feedback.show{opacity:1}
+
+.layers{display:flex;flex-wrap:wrap;gap:22px;margin-top:22px;justify-content:flex-start}
+.layer{display:flex;flex-direction:column;align-items:center;gap:8px}
+.layer .frame{border-radius:10px;overflow:hidden;box-shadow:0 8px 20px -14px rgba(20,14,4,.4);
+  border:1px solid var(--line)}
+.layer .frame svg{display:block;cursor:pointer}
+.layer .z-label{font-family:var(--sans);font-size:11.5px;color:var(--ink-soft);letter-spacing:.04em}
+
+.stone-el{transition:opacity .35s ease}
+
+footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--line-soft);font-family:var(--sans);
+  font-size:12.5px;color:var(--ink-soft)}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Palimpsest &middot; experiment</div>
+    <h1>HyperGo — a 3D Go prototype</h1>
+    <p class="lede">Real Go rules generalized to an N&times;N&times;N cubic lattice: groups and
+      liberties over the 6-neighborhood (&plusmn;x, &plusmn;y, &plusmn;z), capture, suicide illegal
+      unless it captures, simple ko. The cube is shown as its <code>N</code> z-layers, laid out
+      side by side — click an intersection on any layer to play there. Standalone prototype, not
+      part of the published Palimpsest piece.</p>
+  </header>
+
+  <div class="panel">
+    <div class="status-row">
+      <span class="turn" id="turnIndicator"><span class="dot" id="turnDot"></span>Black to move (you)</span>
+      <span class="caps" id="captureCounts">Black captured <b>0</b> &middot; White captured <b>0</b></span>
+    </div>
+    <div class="button-row">
+      <button type="button" id="btnPass">Pass</button>
+      <button type="button" id="btnReset">New game</button>
+      <select id="selSize" aria-label="Board size">
+        <option value="3">3&sup3;</option>
+        <option value="5" selected>5&sup3;</option>
+        <option value="7">7&sup3;</option>
+      </select>
+    </div>
+    <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+
+    <div class="layers" id="layers"></div>
+  </div>
+
+  <footer>
+    Core engine (neighbor/adjacency, group/liberty/capture, ko) is written parameterized by
+    dimension count — every function takes <code>dims</code> and <code>n</code> explicitly, so 4D
+    and 5D are a parameter change, not a rewrite. Exposed as <code>window.HyperGoEngine</code> for
+    direct testing.
+  </footer>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ================= dimension-generic engine core =================
+  // Every function here takes `dims` and `n` explicitly — no hidden module
+  // state — so a future 4D/5D board is a different argument, not different
+  // code. A "point" is always a plain array of `dims` integers, e.g. [x,y,z].
+
+  function pointKey(p){ return p.join(','); }
+
+  function inBounds(p, dims, n){
+    for (var i = 0; i < dims; i++){ if (p[i] < 0 || p[i] >= n) return false; }
+    return true;
+  }
+
+  // Up to 2*dims neighbors: flip each axis by -1 and +1 in turn.
+  function neighborsOf(p, dims, n){
+    var out = [];
+    for (var axis = 0; axis < dims; axis++){
+      for (var delta = -1; delta <= 1; delta += 2){
+        var q = p.slice();
+        q[axis] += delta;
+        if (inBounds(q, dims, n)) out.push(q);
+      }
+    }
+    return out;
+  }
+
+  // Mixed-radix linear index: idx = sum(p[i] * n^i).
+  function linIndex(p, n){
+    var idx = 0, mult = 1;
+    for (var i = 0; i < p.length; i++){ idx += p[i] * mult; mult *= n; }
+    return idx;
+  }
+
+  function pointFromIndex(idx, dims, n){
+    var p = new Array(dims);
+    for (var i = 0; i < dims; i++){ p[i] = idx % n; idx = Math.floor(idx / n); }
+    return p;
+  }
+
+  // Flood-fills the group containing startP. Returns linear-index stones,
+  // the same points as string keys (so callers can mark them visited across
+  // repeated calls without re-deriving keys), and the liberty count.
+  function groupInfoOn(boardArr, startP, dims, n){
+    var color = boardArr[linIndex(startP, n)];
+    var stones = [], pointKeys = [], libKeys = {}, libCount = 0;
+    var seen = {}; seen[pointKey(startP)] = true;
+    var stack = [startP];
+    while (stack.length){
+      var cur = stack.pop();
+      stones.push(linIndex(cur, n));
+      pointKeys.push(pointKey(cur));
+      var nbs = neighborsOf(cur, dims, n);
+      for (var i = 0; i < nbs.length; i++){
+        var np = nbs[i], ni = linIndex(np, n), nv = boardArr[ni];
+        if (nv === 0){
+          var lk = pointKey(np);
+          if (!libKeys[lk]){ libKeys[lk] = true; libCount++; }
+        } else if (nv === color){
+          var sk = pointKey(np);
+          if (!seen[sk]){ seen[sk] = true; stack.push(np); }
+        }
+      }
+    }
+    return { stones: stones, pointKeys: pointKeys, libCount: libCount };
+  }
+
+  // Pure — never mutates boardArr. Returns a legality verdict plus, when
+  // legal, the resulting board so callers decide whether to commit it.
+  function evaluateMove(boardArr, koBan, p, color, dims, n){
+    var i = linIndex(p, n);
+    if (boardArr[i] !== 0) return { legal: false, reason: 'occupied' };
+    var opp = color === 1 ? 2 : 1;
+    var newBoard = boardArr.slice();
+    newBoard[i] = color;
+    var seenOppKeys = {}, captured = [];
+    var nbs = neighborsOf(p, dims, n);
+    for (var k = 0; k < nbs.length; k++){
+      var np = nbs[k], ni = linIndex(np, n);
+      if (newBoard[ni] === opp && !seenOppKeys[pointKey(np)]){
+        var g = groupInfoOn(newBoard, np, dims, n);
+        for (var gk = 0; gk < g.pointKeys.length; gk++) seenOppKeys[g.pointKeys[gk]] = true;
+        if (g.libCount === 0) captured = captured.concat(g.stones);
+      }
+    }
+    for (var c = 0; c < captured.length; c++) newBoard[captured[c]] = 0;
+    var ownGroup = groupInfoOn(newBoard, p, dims, n);
+    if (ownGroup.libCount === 0) return { legal: false, reason: 'suicide' };
+    var newKey = newBoard.join(',');
+    if (koBan !== null && newKey === koBan) return { legal: false, reason: 'ko' };
+    // Classic ko shape: a single stone just captured a single stone into a
+    // single remaining liberty — the only case a positional ko can recur.
+    var newKoBan = null;
+    if (captured.length === 1 && ownGroup.stones.length === 1 && ownGroup.libCount === 1){
+      newKoBan = boardArr.join(',');
+    }
+    return { legal: true, newBoard: newBoard, captured: captured, newKoBan: newKoBan };
+  }
+
+  function legalMovesFor(boardArr, koBan, color, dims, n){
+    var moves = [];
+    var total = Math.pow(n, dims);
+    for (var idx = 0; idx < total; idx++){
+      if (boardArr[idx] !== 0) continue;
+      var p = pointFromIndex(idx, dims, n);
+      var r = evaluateMove(boardArr, koBan, p, color, dims, n);
+      if (r.legal) moves.push(p);
+    }
+    return moves;
+  }
+
+  // Simple greedy-prefers-captures, else uniform random — strength is
+  // irrelevant for this prototype, only rule-correctness matters.
+  function botChooseMove(boardArr, koBan, color, dims, n){
+    var moves = legalMovesFor(boardArr, koBan, color, dims, n);
+    if (moves.length === 0) return null;
+    var capturing = moves.filter(function(p){
+      return evaluateMove(boardArr, koBan, p, color, dims, n).captured.length > 0;
+    });
+    var pool = capturing.length > 0 ? capturing : moves;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  window.HyperGoEngine = {
+    pointKey: pointKey,
+    neighborsOf: neighborsOf,
+    linIndex: linIndex,
+    pointFromIndex: pointFromIndex,
+    groupInfoOn: groupInfoOn,
+    evaluateMove: evaluateMove,
+    legalMovesFor: legalMovesFor,
+    botChooseMove: botChooseMove
+  };
+
+  // ================= deterministic self-tests =================
+  // Hand-crafted board arrays (no game/turn flow involved) exercising the
+  // capture logic directly. Exposed as window.runHyperGoSelfTests() so it
+  // can be invoked and its structured result read back, rather than relying
+  // on console-log scraping.
+  function assert(cond, msg, results){
+    results.push({ pass: !!cond, msg: msg });
+  }
+
+  window.runHyperGoSelfTests = function(){
+    var results = [];
+
+    // --- Test 1: surround a stone on all 6 sides -> captured. ---
+    // N=3, dims=3. White at center (1,1,1); black at 5 of its 6 neighbors;
+    // playing black at the 6th should capture the white stone.
+    (function(){
+      var dims = 3, n = 3;
+      var total = Math.pow(n, dims);
+      var board = new Array(total).fill(0);
+      var center = [1, 1, 1];
+      board[linIndex(center, n)] = 2; // white
+      var nbs = neighborsOf(center, dims, n);
+      assert(nbs.length === 6, 'center of a 3^3 board has 6 neighbors', results);
+      for (var i = 0; i < 5; i++) board[linIndex(nbs[i], n)] = 1; // black
+      var beforeGroup = groupInfoOn(board, center, dims, n);
+      assert(beforeGroup.libCount === 1, 'white at center has exactly 1 liberty before the 6th side is filled', results);
+      var r = evaluateMove(board, null, nbs[5], 1, dims, n);
+      assert(r.legal, 'filling the 6th side is a legal black move', results);
+      assert(r.captured.length === 1 && r.captured[0] === linIndex(center, n),
+        'the surrounded white stone is captured', results);
+      assert(r.newBoard[linIndex(center, n)] === 0, 'the captured point is empty afterward', results);
+    })();
+
+    // --- Test 2: a group spanning two layers shares liberties correctly. ---
+    // N=3, dims=3, otherwise-empty board. Black at (1,1,0) and (1,1,1) (same
+    // group, spans z=0/z=1). Hand-counted expected liberties: 4 open
+    // neighbors from the z=0 stone (edge layer, only 5 neighbors, one of
+    // which is the other group stone) + 5 open neighbors from the z=1 stone
+    // (interior layer, 6 neighbors, one of which is the other group stone),
+    // none overlapping since they're different (x,y,z) points = 9.
+    (function(){
+      var dims = 3, n = 3;
+      var total = Math.pow(n, dims);
+      var board = new Array(total).fill(0);
+      var p0 = [1, 1, 0], p1 = [1, 1, 1];
+      board[linIndex(p0, n)] = 1;
+      board[linIndex(p1, n)] = 1;
+      var g = groupInfoOn(board, p0, dims, n);
+      assert(g.stones.length === 2, 'the two-layer group has exactly 2 stones', results);
+      assert(g.stones.indexOf(linIndex(p1, n)) !== -1, 'the group includes the z=1 stone (flood-fill crossed layers)', results);
+      assert(g.libCount === 9, 'the spanning group has exactly 9 shared liberties (got ' + g.libCount + ')', results);
+    })();
+
+    // --- Test 3: suicide-that-captures is legal. ---
+    // N=3, dims=3. Center (1,1,1) empty. 5 of its 6 neighbors are white
+    // stones each with an open liberty elsewhere (so they survive); the 6th,
+    // (1,1,0), is a lone white stone whose only liberty IS the center point
+    // (its other 4 neighbors are pre-filled black). Playing black at center
+    // looks like suicide (all 6 neighbors occupied) unless the capture of
+    // (1,1,0) is resolved first, which frees that point as a liberty.
+    (function(){
+      var dims = 3, n = 3;
+      var total = Math.pow(n, dims);
+      var board = new Array(total).fill(0);
+      var center = [1, 1, 1];
+      var loneWhite = [1, 1, 0];
+      var survivingWhite = [[0, 1, 1], [2, 1, 1], [1, 0, 1], [1, 2, 1], [1, 1, 2]];
+      board[linIndex(loneWhite, n)] = 2;
+      survivingWhite.forEach(function(p){ board[linIndex(p, n)] = 2; });
+      // Strip loneWhite's other liberties (its neighbors besides center).
+      [[0, 1, 0], [2, 1, 0], [1, 0, 0], [1, 2, 0]].forEach(function(p){ board[linIndex(p, n)] = 1; });
+
+      var loneGroupBefore = groupInfoOn(board, loneWhite, dims, n);
+      assert(loneGroupBefore.libCount === 1, 'the lone white stone has exactly 1 liberty (center) before black plays', results);
+
+      var r = evaluateMove(board, null, center, 1, dims, n);
+      assert(r.legal, 'playing into a fully-surrounded point is legal because it captures', results);
+      assert(r.captured.length === 1 && r.captured[0] === linIndex(loneWhite, n),
+        'exactly the lone white stone is captured, not the surviving ones', results);
+      var ownGroupAfter = groupInfoOn(r.newBoard, center, dims, n);
+      assert(ownGroupAfter.libCount === 1, 'black\'s new stone has exactly 1 liberty after the capture frees it up', results);
+    })();
+
+    var passed = results.filter(function(r){ return r.pass; }).length;
+    return { total: results.length, passed: passed, failed: results.length - passed, results: results };
+  };
+
+  // ================= interactive game state + rendering =================
+  var DIMS = 3;
+  var VIEW = 300, MARGIN = 30;
+
+  var layersEl = document.getElementById('layers');
+  var turnIndicator = document.getElementById('turnIndicator');
+  var turnDot = document.getElementById('turnDot');
+  var captureCounts = document.getElementById('captureCounts');
+  var feedback = document.getElementById('feedback');
+  var btnPass = document.getElementById('btnPass');
+  var btnReset = document.getElementById('btnReset');
+  var selSize = document.getElementById('selSize');
+
+  var N = 5;
+  var cell = (VIEW - 2 * MARGIN) / (N - 1);
+  var game = null;
+  var layerSvgs = []; // one <svg> per z layer
+  var stoneEls = {};  // linear index -> <circle> element currently on screen
+  var ringIndex = null;
+  var ringEl = null;
+  var aiTimer = null;
+
+  function pointX(x){ return MARGIN + x * cell; }
+  function pointY(y){ return MARGIN + y * cell; }
+
+  function newGame(n){
+    return {
+      n: n,
+      board: new Array(Math.pow(n, DIMS)).fill(0),
+      turn: 1,
+      captures: { 1: 0, 2: 0 },
+      koBan: null,
+      passCount: 0,
+      lastMoveIndex: null,
+      locked: false
+    };
+  }
+
+  function showFeedback(msg){
+    feedback.textContent = msg;
+    feedback.classList.add('show');
+    clearTimeout(showFeedback._t);
+    showFeedback._t = setTimeout(function(){ feedback.classList.remove('show'); }, 2400);
+  }
+
+  function reasonMessage(reason){
+    if (reason === 'occupied') return 'That point already has a stone.';
+    if (reason === 'suicide') return 'That would leave no liberties — illegal suicide.';
+    if (reason === 'ko') return 'Ko — the lattice looked exactly like that a move ago.';
+    return 'Illegal move.';
+  }
+
+  function buildLayers(){
+    layersEl.innerHTML = '';
+    layerSvgs = [];
+    cell = (VIEW - 2 * MARGIN) / (N - 1);
+    var SVGNS = 'http://www.w3.org/2000/svg';
+    for (var z = 0; z < N; z++){
+      var wrap = document.createElement('div');
+      wrap.className = 'layer';
+
+      var frame = document.createElement('div');
+      frame.className = 'frame';
+
+      var svg = document.createElementNS(SVGNS, 'svg');
+      svg.setAttribute('viewBox', '0 0 ' + VIEW + ' ' + VIEW);
+      svg.setAttribute('width', '260');
+      svg.setAttribute('height', '260');
+
+      var rect = document.createElementNS(SVGNS, 'rect');
+      rect.setAttribute('x', '0'); rect.setAttribute('y', '0');
+      rect.setAttribute('width', String(VIEW)); rect.setAttribute('height', String(VIEW));
+      rect.setAttribute('fill', '#C8A96A'); rect.setAttribute('rx', '10');
+      svg.appendChild(rect);
+
+      var gridG = document.createElementNS(SVGNS, 'g');
+      gridG.setAttribute('stroke', '#6E5530');
+      gridG.setAttribute('stroke-opacity', '0.55');
+      gridG.setAttribute('stroke-width', '1.3');
+      for (var i = 0; i < N; i++){
+        var a = pointX(i);
+        var l1 = document.createElementNS(SVGNS, 'line');
+        l1.setAttribute('x1', a); l1.setAttribute('y1', MARGIN); l1.setAttribute('x2', a); l1.setAttribute('y2', VIEW - MARGIN);
+        gridG.appendChild(l1);
+        var l2 = document.createElementNS(SVGNS, 'line');
+        l2.setAttribute('x1', MARGIN); l2.setAttribute('y1', a); l2.setAttribute('x2', VIEW - MARGIN); l2.setAttribute('y2', a);
+        gridG.appendChild(l2);
+      }
+      svg.appendChild(gridG);
+
+      var stoneLayer = document.createElementNS(SVGNS, 'g');
+      stoneLayer.setAttribute('data-z', String(z));
+      svg.appendChild(stoneLayer);
+
+      var hoverPreview = document.createElementNS(SVGNS, 'circle');
+      hoverPreview.setAttribute('r', '0');
+      hoverPreview.setAttribute('opacity', '0');
+      hoverPreview.setAttribute('pointer-events', 'none');
+      svg.appendChild(hoverPreview);
+
+      (function(zLayer, svgEl, stoneLayerEl, hoverEl){
+        svgEl.addEventListener('mousemove', function(evt){
+          if (!game || game.locked){ hoverEl.setAttribute('opacity', '0'); return; }
+          var p = pointFromEvent(evt, svgEl);
+          if (!p || game.board[linIdx3(p.x, p.y, zLayer)] !== 0){ hoverEl.setAttribute('opacity', '0'); return; }
+          hoverEl.setAttribute('cx', pointX(p.x).toFixed(2));
+          hoverEl.setAttribute('cy', pointY(p.y).toFixed(2));
+          hoverEl.setAttribute('r', (cell * 0.42).toFixed(2));
+          hoverEl.setAttribute('fill', game.turn === 2 ? 'var(--stone-white)' : 'var(--stone-black)');
+          hoverEl.setAttribute('opacity', '0.28');
+        });
+        svgEl.addEventListener('mouseleave', function(){ hoverEl.setAttribute('opacity', '0'); });
+        svgEl.addEventListener('click', function(evt){
+          if (!game || game.locked || game.turn !== 1) return;
+          var p = pointFromEvent(evt, svgEl);
+          if (!p) return;
+          hoverEl.setAttribute('opacity', '0');
+          humanPlay(p.x, p.y, zLayer);
+        });
+      })(z, svg, stoneLayer, hoverPreview);
+
+      frame.appendChild(svg);
+      wrap.appendChild(frame);
+      var label = document.createElement('div');
+      label.className = 'z-label';
+      label.textContent = 'z = ' + z;
+      wrap.appendChild(label);
+      layersEl.appendChild(wrap);
+      layerSvgs.push({ svg: svg, stoneLayer: stoneLayer, z: z });
+    }
+  }
+
+  function pointFromEvent(evt, svgEl){
+    var rect = svgEl.getBoundingClientRect();
+    var scale = VIEW / rect.width;
+    var localX = (evt.clientX - rect.left) * scale;
+    var localY = (evt.clientY - rect.top) * scale;
+    var pad = cell * 0.5;
+    if (localX < MARGIN - pad || localX > VIEW - MARGIN + pad ||
+        localY < MARGIN - pad || localY > VIEW - MARGIN + pad) return null;
+    var gx = Math.round((localX - MARGIN) / cell);
+    var gy = Math.round((localY - MARGIN) / cell);
+    if (gx < 0 || gx >= N || gy < 0 || gy >= N) return null;
+    return { x: gx, y: gy };
+  }
+
+  function linIdx3(x, y, z){ return HyperGoEngine.linIndex([x, y, z], N); }
+
+  function clearAllStones(){
+    for (var i = 0; i < layerSvgs.length; i++) layerSvgs[i].stoneLayer.innerHTML = '';
+    stoneEls = {};
+    ringEl = null;
+    ringIndex = null;
+  }
+
+  function fadeIn(el, target){
+    el.style.opacity = '0';
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.style.opacity = String(target); }); });
+  }
+
+  function renderAll(){
+    // Full redraw of every layer from game.board — simple and correct; a
+    // capture can affect a *different* layer than the one just clicked
+    // (z-neighbors), so every layer needs to reflect the current board,
+    // not just the one the human clicked on.
+    for (var li = 0; li < layerSvgs.length; li++) layerSvgs[li].stoneLayer.innerHTML = '';
+    stoneEls = {};
+    var oldRingIndex = ringIndex;
+    ringEl = null;
+    var SVGNS = 'http://www.w3.org/2000/svg';
+    var r = cell * 0.42;
+    for (var idx = 0; idx < game.board.length; idx++){
+      var color = game.board[idx];
+      if (color === 0) continue;
+      var p = HyperGoEngine.pointFromIndex(idx, DIMS, N);
+      var layer = layerSvgs[p[2]];
+      var el = document.createElementNS(SVGNS, 'circle');
+      el.setAttribute('cx', pointX(p[0]).toFixed(2));
+      el.setAttribute('cy', pointY(p[1]).toFixed(2));
+      el.setAttribute('r', r.toFixed(2));
+      el.setAttribute('class', 'stone-el');
+      if (color === 1){
+        el.setAttribute('fill', 'var(--stone-black)');
+      } else {
+        el.setAttribute('fill', 'var(--stone-white)');
+        el.setAttribute('stroke', 'var(--stone-black)');
+        el.setAttribute('stroke-width', '1.2');
+      }
+      layer.stoneLayer.appendChild(el);
+      if (idx !== oldRingIndex) fadeIn(el, 1); else el.style.opacity = '1';
+      stoneEls[idx] = el;
+      if (game.lastMoveIndex === idx){
+        var ring = document.createElementNS(SVGNS, 'circle');
+        ring.setAttribute('cx', pointX(p[0]).toFixed(2));
+        ring.setAttribute('cy', pointY(p[1]).toFixed(2));
+        ring.setAttribute('r', (cell * 0.13).toFixed(2));
+        ring.setAttribute('fill', 'none');
+        ring.setAttribute('stroke', color === 1 ? 'var(--stone-white)' : 'var(--stone-black)');
+        ring.setAttribute('stroke-opacity', '0.55');
+        ring.setAttribute('stroke-width', '1.4');
+        layer.stoneLayer.appendChild(ring);
+        ringEl = ring;
+        ringIndex = idx;
+      }
+    }
+  }
+
+  function updateStatusUI(){
+    captureCounts.innerHTML = 'Black captured <b>' + game.captures[1] + '</b> &middot; White captured <b>' + game.captures[2] + '</b>';
+    turnDot.style.background = game.turn === 1 ? 'var(--stone-black)' : 'var(--stone-white)';
+    var label;
+    if (game.locked) label = 'The bot is thinking…';
+    else label = game.turn === 1 ? 'Black to move (you)' : 'White to move (the bot)';
+    turnIndicator.lastChild.textContent = label;
+  }
+
+  function commitMove(p, color){
+    var r = HyperGoEngine.evaluateMove(game.board, game.koBan, p, color, DIMS, N);
+    if (!r.legal) return r;
+    game.board = r.newBoard;
+    game.koBan = r.newKoBan;
+    game.captures[color] += r.captured.length;
+    game.turn = color === 1 ? 2 : 1;
+    game.passCount = 0;
+    game.lastMoveIndex = HyperGoEngine.linIndex(p, N);
+    return r;
+  }
+
+  function commitPass(){
+    game.passCount++;
+    game.turn = game.turn === 1 ? 2 : 1;
+    game.koBan = null;
+    game.lastMoveIndex = null;
+  }
+
+  function humanPlay(x, y, z){
+    var p = [x, y, z];
+    var r = commitMove(p, 1);
+    if (!r.legal){ showFeedback(reasonMessage(r.reason)); return; }
+    renderAll();
+    updateStatusUI();
+    if (game.passCount >= 2){ showFeedback('Both sides passed.'); return; }
+    scheduleBotReply();
+  }
+
+  function scheduleBotReply(){
+    game.locked = true;
+    updateStatusUI();
+    aiTimer = setTimeout(botReply, 500);
+  }
+
+  function botReply(){
+    var mv = HyperGoEngine.botChooseMove(game.board, game.koBan, 2, DIMS, N);
+    if (mv === null) commitPass(); else commitMove(mv, 2);
+    game.locked = false;
+    renderAll();
+    updateStatusUI();
+    if (game.passCount >= 2) showFeedback('Both sides passed.');
+  }
+
+  btnPass.addEventListener('click', function(){
+    if (!game || game.locked || game.turn !== 1) return;
+    commitPass();
+    renderAll();
+    updateStatusUI();
+    if (game.passCount >= 2){ showFeedback('Both sides passed.'); return; }
+    scheduleBotReply();
+  });
+
+  function resetGame(){
+    clearTimeout(aiTimer);
+    game = newGame(N);
+    clearAllStones();
+    updateStatusUI();
+  }
+  btnReset.addEventListener('click', resetGame);
+
+  selSize.addEventListener('change', function(){
+    clearTimeout(aiTimer);
+    N = parseInt(selSize.value, 10);
+    buildLayers();
+    game = newGame(N);
+    updateStatusUI();
+  });
+
+  // ---------- init ----------
+  buildLayers();
+  game = newGame(N);
+  updateStatusUI();
+})();
+</script>
+
+</body>
+</html>
