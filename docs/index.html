@@ -96,6 +96,10 @@ header.hero::before{content:"";position:absolute;inset:0;opacity:.5;pointer-even
 .render-card .board-frame svg{cursor:pointer;touch-action:none}
 #ghostLayer{transition:opacity .5s ease}
 #hoverPreview{transition:opacity .12s ease}
+.stone-el{transition:opacity .55s ease}
+.stone-el.settle{transition:opacity 1.7s ease}
+.ring-el{transition:opacity .3s ease}
+.ring-el.settle{transition:opacity 1.7s ease}
 
 /* ---------- play controls ---------- */
 .controls{margin-top:18px;padding-top:16px;border-top:1px solid var(--line-soft);font-family:var(--sans)}
@@ -629,6 +633,8 @@ footer .prov b{color:var(--ink);font-weight:600}
   var ghostsOn = true;
   var autoplay = false;
   var autoplayTimer = null;
+  var watchResting = false;
+  var watchRestTimer = null;
   var aiTimer = null;
   var engine = null;
 
@@ -728,6 +734,8 @@ footer .prov b{color:var(--ink);font-weight:600}
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
+  var MOVE_CAP = 120; // a self-play game never runs forever, even if it never naturally passes out
+
   function newEngine(size){
     return {
       N: size,
@@ -736,6 +744,7 @@ footer .prov b{color:var(--ink);font-weight:600}
       captures: { 1: 0, 2: 0 },
       koBan: null,
       passCount: 0,
+      moveCount: 0,
       lastMove: null,
       locked: false
     };
@@ -749,6 +758,7 @@ footer .prov b{color:var(--ink);font-weight:600}
     eng.captures[color] += r.captured.length;
     eng.turn = color === 1 ? 2 : 1;
     eng.passCount = 0;
+    eng.moveCount++;
     eng.lastMove = { x: x, y: y, color: color };
     return r;
   }
@@ -776,26 +786,90 @@ footer .prov b{color:var(--ink);font-weight:600}
     hoshiG.innerHTML = hoshiHtml;
   }
 
-  function renderStones(){
-    var html = '';
-    var r = (cell * 0.44).toFixed(2);
-    for (var y = 0; y < engine.N; y++){
-      for (var x = 0; x < engine.N; x++){
-        var v = engine.board[idx(x, y, engine.N)];
-        if (v === 0) continue;
-        var cx = pointX(x).toFixed(2), cy = pointY(y).toFixed(2);
-        if (v === 1){
-          html += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="var(--stone-black)"/>';
-        } else {
-          html += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="var(--stone-white)" stroke="var(--stone-black)" stroke-width="1.4"/>';
-        }
-        if (engine.lastMove && engine.lastMove.x === x && engine.lastMove.y === y){
-          var markColor = v === 1 ? 'var(--stone-white)' : 'var(--stone-black)';
-          html += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (cell * 0.14).toFixed(2) + '" fill="none" stroke="' + markColor + '" stroke-opacity="0.55" stroke-width="1.5"/>';
-        }
-      }
+  // Incremental rendering (rather than a full liveLayer.innerHTML rebuild
+  // each move) so individual stones can fade in when placed and fade out
+  // when captured, instead of popping in and out instantly.
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  var stoneEls = {};   // board index -> <circle> element, for stones currently on screen
+  var ringEl = null;   // the single "last move" marker ring, if any
+
+  function fadeIn(el, targetOpacity){
+    el.style.opacity = '0';
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){ el.style.opacity = String(targetOpacity); });
+    });
+  }
+
+  function addStoneEl(x, y, color){
+    var i = idx(x, y, engine.N);
+    var el = document.createElementNS(SVGNS, 'circle');
+    el.setAttribute('cx', pointX(x).toFixed(2));
+    el.setAttribute('cy', pointY(y).toFixed(2));
+    el.setAttribute('r', (cell * 0.44).toFixed(2));
+    el.setAttribute('class', 'stone-el');
+    if (color === 1){
+      el.setAttribute('fill', 'var(--stone-black)');
+    } else {
+      el.setAttribute('fill', 'var(--stone-white)');
+      el.setAttribute('stroke', 'var(--stone-black)');
+      el.setAttribute('stroke-width', '1.4');
     }
-    liveLayer.innerHTML = html;
+    liveLayer.appendChild(el);
+    fadeIn(el, 1);
+    stoneEls[i] = el;
+  }
+
+  function removeStoneEl(i){
+    var el = stoneEls[i];
+    if (!el) return;
+    delete stoneEls[i];
+    el.style.opacity = '0';
+    setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 600);
+  }
+
+  function updateLastMoveRing(x, y, color){
+    if (ringEl && ringEl.parentNode) ringEl.parentNode.removeChild(ringEl);
+    var markColor = color === 1 ? 'var(--stone-white)' : 'var(--stone-black)';
+    var el = document.createElementNS(SVGNS, 'circle');
+    el.setAttribute('cx', pointX(x).toFixed(2));
+    el.setAttribute('cy', pointY(y).toFixed(2));
+    el.setAttribute('r', (cell * 0.14).toFixed(2));
+    el.setAttribute('fill', 'none');
+    el.setAttribute('stroke', markColor);
+    el.setAttribute('stroke-opacity', '0.55');
+    el.setAttribute('stroke-width', '1.5');
+    el.setAttribute('class', 'ring-el');
+    liveLayer.appendChild(el);
+    fadeIn(el, 1);
+    ringEl = el;
+  }
+
+  function clearRing(){
+    if (ringEl && ringEl.parentNode) ringEl.parentNode.removeChild(ringEl);
+    ringEl = null;
+  }
+
+  function clearAllStones(){
+    liveLayer.innerHTML = '';
+    stoneEls = {};
+    ringEl = null;
+  }
+
+  // Applies a legal move to the engine (if it's legal) and reflects the
+  // result on screen: captured stones fade out, the new stone fades in.
+  function commitMove(eng, x, y, color){
+    var r = applyMove(eng, x, y, color);
+    if (r.legal){
+      r.captured.forEach(removeStoneEl);
+      addStoneEl(x, y, color);
+      updateLastMoveRing(x, y, color);
+    }
+    return r;
+  }
+
+  function commitPass(eng){
+    applyPass(eng);
+    clearRing();
   }
 
   function updateGhostVisibility(){
@@ -830,11 +904,12 @@ footer .prov b{color:var(--ink);font-weight:600}
     }
     turnDot.style.background = engine.turn === 1 ? 'var(--stone-black)' : 'var(--stone-white)';
     var label;
-    if (autoplay) label = 'Watching — ' + (engine.turn === 1 ? 'black' : 'white') + ' to move';
+    if (watchResting) label = 'Settling into the strata…';
+    else if (autoplay) label = 'Watching — ' + (engine.turn === 1 ? 'black' : 'white') + ' to move';
     else if (engine.locked) label = 'The player is thinking…';
     else label = engine.turn === 1 ? 'Black to move (you)' : 'White to move (the player)';
     turnIndicator.lastChild.textContent = label;
-    captionWho.textContent = autoplay ? 'Watching the player play itself' : 'Live — a real game, not saved';
+    captionWho.textContent = watchResting ? 'Resting, mid-forgetting' : (autoplay ? 'Watching the player play itself' : 'Live — a real game, not saved');
     captionMeta.textContent = N + '×' + N + ' · unsaved — resets on New game';
     boardTitle.textContent = 'Palimpsest — live game';
   }
@@ -848,7 +923,6 @@ footer .prov b{color:var(--ink);font-weight:600}
   function clearHover(){ hoverPreview.setAttribute('opacity', '0'); }
 
   function afterMoveApplied(){
-    renderStones();
     updateStatusUI();
     if (engine.passCount >= 2){
       showFeedback('Both sides passed. The player rests.');
@@ -866,8 +940,8 @@ footer .prov b{color:var(--ink);font-weight:600}
   function aiRespond(){
     if (mode !== 'live' || autoplay) return;
     var mv = softPolicyChoose(engine, 2);
-    if (mv === null) applyPass(engine);
-    else applyMove(engine, mv.x, mv.y, 2);
+    if (mv === null) commitPass(engine);
+    else commitMove(engine, mv.x, mv.y, 2);
     engine.locked = false;
     afterMoveApplied();
   }
@@ -908,7 +982,7 @@ footer .prov b{color:var(--ink);font-weight:600}
     var p = pointFromEvent(evt);
     if (!p) return;
     if (mode === 'painting') enterLiveMode();
-    var r = applyMove(engine, p.x, p.y, 1);
+    var r = commitMove(engine, p.x, p.y, 1);
     if (!r.legal){ showFeedback(reasonMessage(r.reason)); return; }
     clearHover();
     if (afterMoveApplied()) return;
@@ -919,13 +993,15 @@ footer .prov b{color:var(--ink);font-weight:600}
   btnPass.addEventListener('click', function(){
     if (autoplay || engine.locked || engine.turn !== 1) return;
     if (mode === 'painting') enterLiveMode();
-    applyPass(engine);
+    commitPass(engine);
     if (afterMoveApplied()) return;
     if (engine.turn === 2) scheduleAiReply();
   });
 
   function stopAutoplay(){
     if (autoplayTimer){ clearInterval(autoplayTimer); autoplayTimer = null; }
+    if (watchRestTimer){ clearTimeout(watchRestTimer); watchRestTimer = null; }
+    watchResting = false;
     autoplay = false;
     btnAutoplay.innerHTML = 'Watch it play itself &#9656;';
     btnAutoplay.setAttribute('aria-pressed', 'false');
@@ -936,12 +1012,54 @@ footer .prov b{color:var(--ink);font-weight:600}
     clearTimeout(aiTimer);
     engine = newEngine(N);
     mode = (N === 13) ? 'painting' : 'live';
-    liveLayer.innerHTML = '';
+    clearAllStones();
     clearHover();
     updateGhostVisibility();
     updateStatusUI();
   }
   btnReset.addEventListener('click', resetBoard);
+
+  // When a self-play game ends (double pass, or MOVE_CAP as a hard safety
+  // net so it never runs forever), let its stones settle toward a ghostly
+  // opacity — a small nod to the piece's own forgetting — then, if Watch is
+  // still on, clear and begin a fresh self-play game.
+  function beginWatchRest(reason){
+    watchResting = true;
+    Object.keys(stoneEls).forEach(function(i){
+      var el = stoneEls[i];
+      el.classList.add('settle');
+      el.style.opacity = '0.3';
+    });
+    if (ringEl){
+      ringEl.classList.add('settle');
+      ringEl.style.opacity = '0';
+    }
+    showFeedback(reason === 'cap'
+      ? 'A long game — the player lets it settle.'
+      : 'Both sides passed. The player lets it settle.');
+    updateStatusUI();
+    watchRestTimer = setTimeout(function(){
+      watchRestTimer = null;
+      clearAllStones();
+      engine = newEngine(N);
+      mode = 'live';
+      watchResting = false;
+      updateGhostVisibility();
+      updateStatusUI();
+    }, 2200);
+  }
+
+  function runWatchTick(){
+    if (watchResting) return;
+    if (engine.passCount >= 2 || engine.moveCount >= MOVE_CAP){
+      beginWatchRest(engine.moveCount >= MOVE_CAP ? 'cap' : 'passed');
+      return;
+    }
+    var color = engine.turn;
+    var mv = softPolicyChoose(engine, color);
+    if (mv === null) commitPass(engine); else commitMove(engine, mv.x, mv.y, color);
+    updateStatusUI();
+  }
 
   btnAutoplay.addEventListener('click', function(){
     if (autoplay){ stopAutoplay(); updateStatusUI(); return; }
@@ -952,14 +1070,7 @@ footer .prov b{color:var(--ink);font-weight:600}
     btnAutoplay.innerHTML = 'Stop watching &#10074;&#10074;';
     btnAutoplay.setAttribute('aria-pressed', 'true');
     updateStatusUI();
-    autoplayTimer = setInterval(function(){
-      if (engine.passCount >= 2){ stopAutoplay(); updateStatusUI(); return; }
-      var color = engine.turn;
-      var mv = softPolicyChoose(engine, color);
-      if (mv === null) applyPass(engine); else applyMove(engine, mv.x, mv.y, color);
-      renderStones();
-      updateStatusUI();
-    }, 650);
+    autoplayTimer = setInterval(runWatchTick, 1000);
   });
 
   chkGhosts.addEventListener('change', function(){
@@ -978,7 +1089,7 @@ footer .prov b{color:var(--ink);font-weight:600}
     chkGhosts.closest('label').classList.toggle('is-disabled', N !== 13);
     engine = newEngine(N);
     mode = (N === 13) ? 'painting' : 'live';
-    liveLayer.innerHTML = '';
+    clearAllStones();
     clearHover();
     updateGhostVisibility();
     updateStatusUI();
