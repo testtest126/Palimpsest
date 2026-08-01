@@ -62,9 +62,17 @@ This phase built:
 - A seed run of several sessions, committed step by step, so the very first
   look at this board already has real layered history to show.
 
-Phase 1 is deliberately just this: an offline generator you run by hand.
-There is **no web publish, no scheduled/automated runs, and no polish pass**
-yet — those are explicitly out of scope for this phase.
+Since then the piece has also been **published**: `docs/` is served at
+[testtest126.github.io/Palimpsest](https://testtest126.github.io/Palimpsest/),
+and `breath.sh` advances the piece by one session, re-renders, splices the new
+strata into that page, and pushes — in one step. A scheduled
+[GitHub Actions workflow](.github/workflows/breath.yml) now runs that same
+breath once a day, unattended — `breath.sh` remains the one place the actual
+logic lives, so a breath run by hand and a breath run by the workflow are the
+same code path.
+
+What's still **not** built: **a polish pass** — palette, pacing, and layout
+are all still first drafts. Out of scope for this phase.
 
 ## Running it
 

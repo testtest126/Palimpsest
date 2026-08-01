@@ -62,6 +62,9 @@ if git diff --cached --quiet; then
 fi
 
 git commit -q -m "Breath: advance to session $SESSION"
-git push origin main
+# HEAD:main rather than plain 'main' — works whether HEAD is a local branch
+# (the normal case, run by hand) or detached at a commit (actions/checkout's
+# default in CI), pushing whatever HEAD currently points at either way.
+git push origin HEAD:main
 
 echo "breath.sh: advanced to session $SESSION and pushed"
