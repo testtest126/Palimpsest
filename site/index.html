@@ -523,6 +523,7 @@ footer .prov b{color:var(--ink);font-weight:600}
           <button type="button" id="btnReset">New game</button>
           <button type="button" id="btnAutoplay" aria-pressed="false">Watch it play itself &#9656;</button>
           <button type="button" id="btnTimeline" aria-pressed="false">Timeline &#8987;</button>
+          <button type="button" id="btnSound" aria-pressed="false" aria-label="Toggle sound">Sound: off &#128263;</button>
           <label class="ghost-toggle"><input type="checkbox" id="chkGhosts" checked> ghosts</label>
           <select id="selSize" aria-label="Board size">
             <option value="9">9&times;9</option>
@@ -660,6 +661,7 @@ footer .prov b{color:var(--ink);font-weight:600}
   var timelineSlider = document.getElementById('timelineSlider');
   var timelineLabel = document.getElementById('timelineLabel');
   var btnTimelinePlay = document.getElementById('btnTimelinePlay');
+  var btnSound = document.getElementById('btnSound');
   var chkGhosts = document.getElementById('chkGhosts');
   var selSize = document.getElementById('selSize');
 
@@ -678,6 +680,89 @@ footer .prov b{color:var(--ink);font-weight:600}
   var timelineSession = 1;
   var timelinePlaying = false;
   var timelinePlayTimer = null;
+
+  // ---------- sound (Web Audio API, generated — no audio files) ----------
+  // Default muted; audioCtx is only ever created inside the mute-toggle's
+  // click handler, a genuine user gesture, so this never fights a browser's
+  // autoplay policy and never plays a sound the visitor didn't ask to hear.
+  var soundOn = false;
+  var audioCtx = null;
+  var masterGain = null;
+
+  function ensureAudio(){
+    if (audioCtx) return audioCtx;
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    audioCtx = new Ctx();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.32; // gentle headroom — ambient, not beepy
+    masterGain.connect(audioCtx.destination);
+    return audioCtx;
+  }
+
+  // One decaying partial: a filtered oscillator with an exponential
+  // attack/decay envelope. The building block for every tone below.
+  function playPartial(opts){
+    var ctx = audioCtx;
+    var t0 = ctx.currentTime + (opts.delay || 0);
+    var osc = ctx.createOscillator();
+    osc.type = opts.type || 'sine';
+    osc.frequency.setValueAtTime(opts.freq, t0);
+    if (opts.freqEnd){
+      osc.frequency.exponentialRampToValueAtTime(opts.freqEnd, t0 + opts.duration);
+    }
+    var filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(opts.filterFreq || 1200, t0);
+    if (opts.filterFreqEnd){
+      filter.frequency.exponentialRampToValueAtTime(opts.filterFreqEnd, t0 + opts.duration);
+    }
+    filter.Q.value = opts.q || 0.7;
+    var gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(opts.peak, t0 + (opts.attack || 0.006));
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + opts.duration);
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGain);
+    osc.start(t0);
+    osc.stop(t0 + opts.duration + 0.05);
+  }
+
+  // A soft mallet/marimba-like strike: a sine fundamental (the body of the
+  // note) plus a brief brighter partial an octave-and-a-bit up (the
+  // transient "click" of a mallet head), both filtered warm. Black rings
+  // very slightly lower than White — the same crisp/present contrast the
+  // board already draws in slate and shell.
+  function playPlaceTone(color){
+    if (!soundOn || !ensureAudio()) return;
+    var base = color === 1 ? 196.00 : 233.08; // G3 vs Bb3 — a gentle third apart
+    playPartial({ type: 'sine', freq: base, filterFreq: 1500, duration: 0.42, attack: 0.005, peak: 0.5 });
+    playPartial({ type: 'triangle', freq: base * 2.4, filterFreq: 2200, duration: 0.1, attack: 0.003, peak: 0.16 });
+  }
+
+  // A capture: lower, hollow, and slower to fade than a placement — the
+  // pitch and the lowpass cutoff both drift downward together as it decays,
+  // an audible "forgetting" rather than a percussive hit.
+  function playCaptureTone(){
+    if (!soundOn || !ensureAudio()) return;
+    playPartial({
+      type: 'sine', freq: 150, freqEnd: 95,
+      filterFreq: 900, filterFreqEnd: 260,
+      duration: 0.95, attack: 0.012, peak: 0.42,
+      delay: 0.09 // just after the placement tone, so the two read as
+                  // "a stone landed, then something else faded" rather
+                  // than a single muddy chord
+    });
+  }
+
+  // A very soft tick, used only by Timeline's own time-lapse Play — never
+  // while dragging the slider by hand, which would fire far too rapidly to
+  // stay pleasant.
+  function playTimelineTick(){
+    if (!soundOn || !ensureAudio()) return;
+    playPartial({ type: 'sine', freq: 660, filterFreq: 2400, duration: 0.05, attack: 0.002, peak: 0.12 });
+  }
 
   function pointX(x){ return MARGIN + x * cell; }
   function pointY(y){ return MARGIN + y * cell; }
@@ -1026,6 +1111,11 @@ footer .prov b{color:var(--ink);font-weight:600}
       r.captured.forEach(removeStoneEl);
       addStoneEl(x, y, color);
       updateLastMoveRing(x, y, color);
+      playPlaceTone(color);
+      // One capture tone per move regardless of how many stones came off
+      // the board at once — a multi-stone capture is one event, not a
+      // volley of identical dings.
+      if (r.captured.length > 0) playCaptureTone();
     }
     return r;
   }
@@ -1308,6 +1398,7 @@ footer .prov b{color:var(--ink);font-weight:600}
         timelineSession = hist.sessions.length;
         timelineSlider.value = String(timelineSession);
         renderTimelineSnapshot(timelineSession);
+        playTimelineTick();
         updateTimelineLabel();
         updateStatusUI();
         stopTimelinePlay();
@@ -1315,9 +1406,21 @@ footer .prov b{color:var(--ink);font-weight:600}
       }
       timelineSlider.value = String(timelineSession);
       renderTimelineSnapshot(timelineSession);
+      playTimelineTick();
       updateTimelineLabel();
       updateStatusUI();
     }, 320);
+  });
+
+  btnSound.addEventListener('click', function(){
+    soundOn = !soundOn;
+    btnSound.setAttribute('aria-pressed', String(soundOn));
+    btnSound.innerHTML = soundOn ? 'Sound: on &#128266;' : 'Sound: off &#128263;';
+    if (soundOn){
+      var ctx = ensureAudio();
+      if (ctx && ctx.state === 'suspended') ctx.resume();
+      playPlaceTone(1); // immediate, audible confirmation that sound is on
+    }
   });
 
   // ---------- init ----------
