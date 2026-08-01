@@ -98,9 +98,21 @@ def splice(html_text: str, marks: list[str], session: int, points: int, scars: i
     return new_html
 
 
+def splice_history(html_text: str, history_json_text: str) -> str:
+    """Replaces the embedded Timeline history blob wholesale — it's a flat
+    per-session snapshot array with no per-field structure to pattern-match
+    against, so (unlike the ghost layer) this just swaps the whole body."""
+    marker_open = '<script type="application/json" id="historyData">'
+    marker_close = "</script>"
+    start = html_text.index(marker_open) + len(marker_open)
+    end = html_text.index(marker_close, start)
+    return html_text[:start] + history_json_text + html_text[end:]
+
+
 def main():
     svg_path, html_path = sys.argv[1], sys.argv[2]
     state_path = os.path.join(os.path.dirname(svg_path), "palimpsest.json")
+    history_path = os.path.join(os.path.dirname(svg_path), "history.json")
 
     with open(svg_path) as f:
         svg_text = f.read()
@@ -111,6 +123,15 @@ def main():
     points, scars = stats_from_state(state_path)
     new_html = splice(html_text, marks, session, points, scars)
 
+    history_note = ""
+    if os.path.exists(history_path):
+        with open(history_path) as f:
+            history_json_text = f.read()
+        before_history = new_html
+        new_html = splice_history(new_html, history_json_text)
+        if new_html != before_history:
+            history_note = ", history refreshed"
+
     if new_html == html_text:
         print("splice_ghosts: no change")
         return
@@ -119,7 +140,7 @@ def main():
         f.write(new_html)
     print(
         f"splice_ghosts: spliced {len(marks)} marks, session {session}, "
-        f"{points} points, {scars} scar(s)"
+        f"{points} points, {scars} scar(s){history_note}"
     )
 
 

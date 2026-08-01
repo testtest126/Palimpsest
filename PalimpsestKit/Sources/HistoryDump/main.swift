@@ -83,7 +83,13 @@ do {
     }
 
     let history = HistoryFile(boardSize: state.boardSize, sessions: sessions)
-    let data = try JSONEncoder().encode(history)
+    let encoder = JSONEncoder()
+    // Deterministic byte output (not just deterministic data) — JSONEncoder
+    // otherwise orders keys by Swift's per-process-randomized Dictionary
+    // hashing, so two runs over identical data could differ byte-for-byte.
+    // Same reasoning as Persistence.swift's encoder.
+    encoder.outputFormatting = [.sortedKeys]
+    let data = try encoder.encode(history)
     try data.write(to: outURL, options: .atomic)
     print("history-dump: wrote \(targetSession) sessions (\(data.count) bytes) to \(outURL.path)")
 } catch {

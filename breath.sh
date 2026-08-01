@@ -36,11 +36,25 @@ if [ -x "$CHROME" ]; then
     >/dev/null 2>&1 || echo "breath.sh: PNG rasterization skipped (headless Chrome unavailable)" >&2
 fi
 
-# Surgical splice: only the ghost-strata SVG block and its session-number
-# text change. The interactive board's JS/CSS/controls are untouched.
+# Regenerate the full Timeline history (a fresh deterministic replay from
+# session 1, not an incremental append — cheap even at hundreds of
+# sessions, and self-healing: it can never drift from palimpsest.json since
+# history-dump aborts if its replay doesn't land on it exactly).
+HISTORY_LOG="$(mktemp)"
+"$REPO_DIR/PalimpsestKit/.build/release/history-dump" "$REPO_DIR" "$REPO_DIR/history.json" >"$HISTORY_LOG" 2>&1 || {
+  echo "breath.sh: history-dump failed — see $HISTORY_LOG" >&2
+  cat "$HISTORY_LOG" >&2
+  rm -f "$HISTORY_LOG"
+  exit 1
+}
+rm -f "$HISTORY_LOG"
+
+# Surgical splice: the ghost-strata SVG block, its session-number text, the
+# "at a glance" facts, and the embedded Timeline history. The interactive
+# board's JS/CSS/controls are untouched.
 python3 "$REPO_DIR/splice_ghosts.py" "$REPO_DIR/render.svg" "$REPO_DIR/docs/index.html"
 
-git add palimpsest.json render.svg render.png docs/index.html
+git add palimpsest.json render.svg render.png history.json docs/index.html
 
 if git diff --cached --quiet; then
   echo "breath.sh: session $SESSION produced no file changes — nothing to commit"
