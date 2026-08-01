@@ -1062,7 +1062,17 @@ footer .prov b{color:var(--ink);font-weight:600}
   }
 
   btnAutoplay.addEventListener('click', function(){
-    if (autoplay){ stopAutoplay(); updateStatusUI(); return; }
+    if (autoplay){
+      stopAutoplay();
+      updateStatusUI();
+      // Watch drives both sides; if it's stopped mid-White's-turn, nothing
+      // else would ever prompt White to move — so pick up that reply here,
+      // the same way a human move normally schedules one. (Skip if the
+      // self-play game had already ended via double pass — nothing to
+      // reply to there.)
+      if (mode === 'live' && engine.passCount < 2 && engine.turn === 2 && !engine.locked) scheduleAiReply();
+      return;
+    }
     clearTimeout(aiTimer);
     engine.locked = false;
     if (mode === 'painting') enterLiveMode();
