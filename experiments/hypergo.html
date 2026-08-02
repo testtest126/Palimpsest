@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>HyperGo — N-dimensional Go prototype</title>
+<style>body{margin:0;padding:0}</style>
+</head>
+<body>
+
+<style>
+:root{
+  /* Same warm-goban identity as the main Palimpsest page — this is an
+     experiment living next to it, not a new visual language. */
+  --bg:#F1EADB; --surface:#FBF8F0; --surface-2:#E9DFC6;
+  --ink:#1B1712; --ink-soft:#6E6350; --line:#DCCEA9; --line-soft:#E7DCBE;
+  --accent:#8F502B; --accent-ink:#FFFFFF;
+  --stone-black:#1A1A1A; --stone-white:#F4F1EA;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --serif:"Iowan Old Style",Palatino,"Palatino Linotype","Book Antiqua",Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#1B140D; --surface:#241B12; --surface-2:#2E2216;
+    --ink:#F1EBDC; --ink-soft:#B4A688; --line:#3B2E1C; --line-soft:#2E2216;
+    --accent:#E3A467; --accent-ink:#1F1710;
+  }
+}
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--ink);font-family:var(--serif);margin:0;line-height:1.5;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin:0 auto;padding:0 24px 64px}
+h1,h2{text-wrap:balance;margin:0}
+a{color:var(--accent)}
+
+header{padding:40px 0 8px}
+header .eyebrow{font-family:var(--sans);font-size:12px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--accent);font-weight:600}
+header h1{font-size:clamp(28px,4vw,40px);font-weight:700;margin:10px 0 0}
+header p.lede{font-family:var(--sans);font-size:14.5px;color:var(--ink-soft);max-width:64em;margin:14px 0 0}
+header p.lede code{font-family:var(--mono);background:var(--surface-2);border:1px solid var(--line-soft);
+  border-radius:4px;padding:0 4px}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 24px;
+  margin-top:22px;box-shadow:0 10px 30px -20px rgba(20,14,4,.3)}
+
+.status-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 18px;
+  font-family:var(--sans);font-size:13.5px}
+.status-row .turn{font-weight:600;display:inline-flex;align-items:center}
+.status-row .turn .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;
+  background:var(--ink-soft);border:1px solid var(--line);flex:none}
+.status-row .caps{color:var(--ink-soft);white-space:nowrap}
+.status-row .caps b{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
+
+.button-row{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-top:14px}
+.button-row button, .button-row select{font-family:var(--sans);font-size:12.5px;padding:7px 14px;
+  border-radius:99px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);
+  cursor:pointer;line-height:1.3}
+.button-row button:hover{border-color:var(--accent);color:var(--accent)}
+.button-row button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.button-row button:disabled, .button-row select:disabled{opacity:.4;pointer-events:none}
+
+.feedback{min-height:16px;margin-top:10px;font-family:var(--sans);font-size:12.5px;color:var(--accent);
+  opacity:0;transition:opacity .25s ease}
+.feedback.show{opacity:1}
+
+.layers{display:flex;flex-wrap:wrap;gap:22px;margin-top:22px;justify-content:flex-start;align-items:flex-start}
+.layer{display:flex;flex-direction:column;align-items:center;gap:6px}
+.layer .frame{border-radius:10px;overflow:hidden;box-shadow:0 8px 20px -14px rgba(20,14,4,.4);
+  border:1px solid var(--line)}
+.layer .frame svg{display:block;cursor:pointer}
+.layer .sub-label{font-family:var(--sans);font-size:10.5px;color:var(--ink-soft);letter-spacing:.03em;
+  white-space:nowrap}
+
+.grid4d{display:grid;gap:14px}
+
+.block5d{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:14px;
+  border:1px dashed var(--line);border-radius:14px}
+.block5d .block5d-label{font-family:var(--sans);font-size:12px;color:var(--accent);font-weight:700;
+  letter-spacing:.05em;text-transform:uppercase}
+
+.stone-el{transition:opacity .35s ease}
+
+footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--line-soft);font-family:var(--sans);
+  font-size:12.5px;color:var(--ink-soft)}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Palimpsest &middot; experiment</div>
+    <h1>HyperGo — an N-dimensional Go prototype</h1>
+    <p class="lede">Real Go rules generalized to an N&times;N&times;&hellip; lattice in 3, 4, or 5
+      dimensions: groups and liberties over the full 2&times;D orthogonal neighborhood (6 neighbors
+      in 3D, 8 in 4D, 10 in 5D), capture, suicide illegal unless it captures, simple ko. Rendered as
+      nested grids — the same trick "5D chess" uses: a 4D board is a grid of 2D boards, a 5D board
+      is a row of those grids. Click an intersection on any sub-board to play there. Standalone
+      prototype, not part of the published Palimpsest piece.</p>
+  </header>
+
+  <div class="panel">
+    <div class="status-row">
+      <span class="turn" id="turnIndicator"><span class="dot" id="turnDot"></span>Black to move (you)</span>
+      <span class="caps" id="captureCounts">Black captured <b>0</b> &middot; White captured <b>0</b></span>
+    </div>
+    <div class="button-row">
+      <button type="button" id="btnPass">Pass</button>
+      <button type="button" id="btnReset">New game</button>
+      <select id="selDims" aria-label="Dimensions">
+        <option value="3" selected>3D</option>
+        <option value="4">4D</option>
+        <option value="5">5D</option>
+      </select>
+      <select id="selSize" aria-label="Board size per axis"></select>
+    </div>
+    <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+
+    <div class="layers" id="layers"></div>
+  </div>
+
+  <footer>
+    Core engine (neighbor/adjacency, group/liberty/capture, ko) is written parameterized by
+    dimension count — every function takes <code>dims</code> and <code>n</code> explicitly, so this
+    same code drives 3D, 4D, and 5D play with no branching on dimension anywhere in the rules
+    themselves. Only the rendering (how sub-boards nest) changes shape per dimension. Exposed as
+    <code>window.HyperGoEngine</code> for direct testing.
+  </footer>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ================= dimension-generic engine core =================
+  // Every function here takes `dims` and `n` explicitly — no hidden module
+  // state — so 4D and 5D are a different argument, not different code. A
+  // "point" is always a plain array of `dims` integers, e.g. [x,y,z].
+
+  function pointKey(p){ return p.join(','); }
+
+  function inBounds(p, dims, n){
+    for (var i = 0; i < dims; i++){ if (p[i] < 0 || p[i] >= n) return false; }
+    return true;
+  }
+
+  // Up to 2*dims neighbors: flip each axis by -1 and +1 in turn.
+  function neighborsOf(p, dims, n){
+    var out = [];
+    for (var axis = 0; axis < dims; axis++){
+      for (var delta = -1; delta <= 1; delta += 2){
+        var q = p.slice();
+        q[axis] += delta;
+        if (inBounds(q, dims, n)) out.push(q);
+      }
+    }
+    return out;
+  }
+
+  // Mixed-radix linear index: idx = sum(p[i] * n^i).
+  function linIndex(p, n){
+    var idx = 0, mult = 1;
+    for (var i = 0; i < p.length; i++){ idx += p[i] * mult; mult *= n; }
+    return idx;
+  }
+
+  function pointFromIndex(idx, dims, n){
+    var p = new Array(dims);
+    for (var i = 0; i < dims; i++){ p[i] = idx % n; idx = Math.floor(idx / n); }
+    return p;
+  }
+
+  // Flood-fills the group containing startP. Returns linear-index stones,
+  // the same points as string keys (so callers can mark them visited across
+  // repeated calls without re-deriving keys), and the liberty count.
+  function groupInfoOn(boardArr, startP, dims, n){
+    var color = boardArr[linIndex(startP, n)];
+    var stones = [], pointKeys = [], libKeys = {}, libCount = 0;
+    var seen = {}; seen[pointKey(startP)] = true;
+    var stack = [startP];
+    while (stack.length){
+      var cur = stack.pop();
+      stones.push(linIndex(cur, n));
+      pointKeys.push(pointKey(cur));
+      var nbs = neighborsOf(cur, dims, n);
+      for (var i = 0; i < nbs.length; i++){
+        var np = nbs[i], ni = linIndex(np, n), nv = boardArr[ni];
+        if (nv === 0){
+          var lk = pointKey(np);
+          if (!libKeys[lk]){ libKeys[lk] = true; libCount++; }
+        } else if (nv === color){
+          var sk = pointKey(np);
+          if (!seen[sk]){ seen[sk] = true; stack.push(np); }
+        }
+      }
+    }
+    return { stones: stones, pointKeys: pointKeys, libCount: libCount };
+  }
+
+  // Pure — never mutates boardArr. Returns a legality verdict plus, when
+  // legal, the resulting board so callers decide whether to commit it.
+  function evaluateMove(boardArr, koBan, p, color, dims, n){
+    var i = linIndex(p, n);
+    if (boardArr[i] !== 0) return { legal: false, reason: 'occupied' };
+    var opp = color === 1 ? 2 : 1;
+    var newBoard = boardArr.slice();
+    newBoard[i] = color;
+    var seenOppKeys = {}, captured = [];
+    var nbs = neighborsOf(p, dims, n);
+    for (var k = 0; k < nbs.length; k++){
+      var np = nbs[k], ni = linIndex(np, n);
+      if (newBoard[ni] === opp && !seenOppKeys[pointKey(np)]){
+        var g = groupInfoOn(newBoard, np, dims, n);
+        for (var gk = 0; gk < g.pointKeys.length; gk++) seenOppKeys[g.pointKeys[gk]] = true;
+        if (g.libCount === 0) captured = captured.concat(g.stones);
+      }
+    }
+    for (var c = 0; c < captured.length; c++) newBoard[captured[c]] = 0;
+    var ownGroup = groupInfoOn(newBoard, p, dims, n);
+    if (ownGroup.libCount === 0) return { legal: false, reason: 'suicide' };
+    var newKey = newBoard.join(',');
+    if (koBan !== null && newKey === koBan) return { legal: false, reason: 'ko' };
+    // Classic ko shape: a single stone just captured a single stone into a
+    // single remaining liberty — the only case a positional ko can recur.
+    var newKoBan = null;
+    if (captured.length === 1 && ownGroup.stones.length === 1 && ownGroup.libCount === 1){
+      newKoBan = boardArr.join(',');
+    }
+    return { legal: true, newBoard: newBoard, captured: captured, newKoBan: newKoBan };
+  }
+
+  function legalMovesFor(boardArr, koBan, color, dims, n){
+    var moves = [];
+    var total = Math.pow(n, dims);
+    for (var idx = 0; idx < total; idx++){
+      if (boardArr[idx] !== 0) continue;
+      var p = pointFromIndex(idx, dims, n);
+      var r = evaluateMove(boardArr, koBan, p, color, dims, n);
+      if (r.legal) moves.push(p);
+    }
+    return moves;
+  }
+
+  // Simple greedy-prefers-captures, else uniform random — strength is
+  // irrelevant for this prototype, only rule-correctness matters.
+  function botChooseMove(boardArr, koBan, color, dims, n){
+    var moves = legalMovesFor(boardArr, koBan, color, dims, n);
+    if (moves.length === 0) return null;
+    var capturing = moves.filter(function(p){
+      return evaluateMove(boardArr, koBan, p, color, dims, n).captured.length > 0;
+    });
+    var pool = capturing.length > 0 ? capturing : moves;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  window.HyperGoEngine = {
+    pointKey: pointKey,
+    neighborsOf: neighborsOf,
+    linIndex: linIndex,
+    pointFromIndex: pointFromIndex,
+    groupInfoOn: groupInfoOn,
+    evaluateMove: evaluateMove,
+    legalMovesFor: legalMovesFor,
+    botChooseMove: botChooseMove
+  };
+
+  // ================= deterministic self-tests =================
+  // Hand-crafted board arrays (no game/turn flow involved) exercising the
+  // capture logic directly, at dims=3, 4, AND 5 — the same three
+  // properties checked at each dimension, since the whole point is that
+  // the rules don't change shape as D grows. Exposed as
+  // window.runHyperGoSelfTests() so it can be invoked and its structured
+  // result read back, rather than relying on console-log scraping.
+  function assert(cond, msg, results){
+    results.push({ pass: !!cond, msg: msg });
+  }
+
+  // ---- full-surround capture, generic over dims (N=3, center = all 1s). ----
+  function testFullSurroundCapture(dims, results){
+    var n = 3;
+    var total = Math.pow(n, dims);
+    var board = new Array(total).fill(0);
+    var center = new Array(dims).fill(1);
+    board[linIndex(center, n)] = 2; // white
+    var nbs = neighborsOf(center, dims, n);
+    var expectedNeighbors = 2 * dims;
+    assert(nbs.length === expectedNeighbors,
+      dims + 'D: center of a 3^' + dims + ' board has ' + expectedNeighbors + ' neighbors (got ' + nbs.length + ')', results);
+    for (var i = 0; i < nbs.length - 1; i++) board[linIndex(nbs[i], n)] = 1; // black on all but the last
+    var beforeGroup = groupInfoOn(board, center, dims, n);
+    assert(beforeGroup.libCount === 1,
+      dims + 'D: white at center has exactly 1 liberty before the last side is filled', results);
+    var r = evaluateMove(board, null, nbs[nbs.length - 1], 1, dims, n);
+    assert(r.legal, dims + 'D: filling the last side is a legal black move', results);
+    assert(r.captured.length === 1 && r.captured[0] === linIndex(center, n),
+      dims + 'D: the surrounded white stone is captured', results);
+    assert(r.newBoard[linIndex(center, n)] === 0, dims + 'D: the captured point is empty afterward', results);
+  }
+
+  // ---- a group spanning two sub-boards (adjacent along the LAST axis —
+  // the axis that becomes the outer grid/row link in the renderer) shares
+  // liberties correctly. Expected counts are hand-derived per dimension
+  // (see the report/commit message for the by-hand neighbor accounting)
+  // rather than re-computed by the same code under test. ----
+  function testSpanningGroup(dims, n, p0, p1, expectedLibCount, results){
+    var total = Math.pow(n, dims);
+    var board = new Array(total).fill(0);
+    board[linIndex(p0, n)] = 1;
+    board[linIndex(p1, n)] = 1;
+    var g = groupInfoOn(board, p0, dims, n);
+    assert(g.stones.length === 2, dims + 'D: the spanning group has exactly 2 stones', results);
+    assert(g.stones.indexOf(linIndex(p1, n)) !== -1,
+      dims + 'D: the group includes the far sub-board\'s stone (flood-fill crossed the higher-dimensional link)', results);
+    assert(g.libCount === expectedLibCount,
+      dims + 'D: the spanning group has exactly ' + expectedLibCount + ' shared liberties (got ' + g.libCount + ')', results);
+  }
+
+  // ---- suicide-that-captures, generic over dims. Center = all 1s (N=3).
+  // One neighbor (loneWhite) is a lone white stone whose only liberty is
+  // the center point; every other neighbor of center is white with open
+  // liberties elsewhere (so they survive). Playing black at center looks
+  // like suicide (every neighbor occupied) unless loneWhite's capture is
+  // resolved first, freeing that point as a liberty. ----
+  function testSuicideThatCaptures(dims, results){
+    var n = 3;
+    var total = Math.pow(n, dims);
+    var board = new Array(total).fill(0);
+    var center = new Array(dims).fill(1);
+    var centerNbs = neighborsOf(center, dims, n);
+    var loneWhite = centerNbs[0];
+    var survivingWhite = centerNbs.slice(1);
+    board[linIndex(loneWhite, n)] = 2;
+    survivingWhite.forEach(function(p){ board[linIndex(p, n)] = 2; });
+    // Strip loneWhite's other liberties (every neighbor of loneWhite besides center).
+    var loneNbs = neighborsOf(loneWhite, dims, n);
+    loneNbs.forEach(function(p){
+      if (pointKey(p) !== pointKey(center)) board[linIndex(p, n)] = 1;
+    });
+
+    var loneGroupBefore = groupInfoOn(board, loneWhite, dims, n);
+    assert(loneGroupBefore.libCount === 1,
+      dims + 'D: the lone white stone has exactly 1 liberty (center) before black plays', results);
+
+    var r = evaluateMove(board, null, center, 1, dims, n);
+    assert(r.legal, dims + 'D: playing into a fully-surrounded point is legal because it captures', results);
+    assert(r.captured.length === 1 && r.captured[0] === linIndex(loneWhite, n),
+      dims + 'D: exactly the lone white stone is captured, not the surviving ones', results);
+    var ownGroupAfter = groupInfoOn(r.newBoard, center, dims, n);
+    assert(ownGroupAfter.libCount === 1,
+      dims + 'D: black\'s new stone has exactly 1 liberty after the capture frees it up', results);
+  }
+
+  window.runHyperGoSelfTests = function(){
+    var results = [];
+
+    // --- 3D (N=3): full-surround, spanning group, suicide-that-captures. ---
+    testFullSurroundCapture(3, results);
+    // Hand count: p0=(1,1,0) is an edge point on axis2 (only 5 neighbors,
+    // one being p1) -> 4 open liberties; p1=(1,1,1) is fully interior (6
+    // neighbors, one being p0) -> 5 open liberties. Different points, no
+    // overlap. Total = 4 + 5 = 9.
+    testSpanningGroup(3, 3, [1, 1, 0], [1, 1, 1], 9, results);
+    testSuicideThatCaptures(3, results);
+
+    // --- 4D (N=3): same three properties, 8-neighborhood. ---
+    testFullSurroundCapture(4, results);
+    // p0=(1,1,0,1) is an edge point on axis2 (7 neighbors, one being p1) ->
+    // 6 open liberties; p1=(1,1,1,1) is fully interior (8 neighbors, one
+    // being p0) -> 7 open liberties. No overlap (p0's non-group neighbors
+    // all have axis2=0; p1's all have axis2=1 or 2). Total = 6 + 7 = 13.
+    testSpanningGroup(4, 3, [1, 1, 0, 1], [1, 1, 1, 1], 13, results);
+    testSuicideThatCaptures(4, results);
+
+    // --- 5D (N=3): same three properties, 10-neighborhood. ---
+    testFullSurroundCapture(5, results);
+    // p0=(1,1,1,0,1) is an edge point on axis3 (9 neighbors, one being p1)
+    // -> 8 open liberties; p1=(1,1,1,1,1) is fully interior (10 neighbors,
+    // one being p0) -> 9 open liberties. No overlap. Total = 8 + 9 = 17.
+    testSpanningGroup(5, 3, [1, 1, 1, 0, 1], [1, 1, 1, 1, 1], 17, results);
+    testSuicideThatCaptures(5, results);
+
+    var passed = results.filter(function(r){ return r.pass; }).length;
+    return { total: results.length, passed: passed, failed: results.length - passed, results: results };
+  };
+
+  // ================= interactive game state + rendering =================
+  // Rendering nests sub-boards the same way "5D chess" nests boards: the
+  // first two axes (x, y) are always the innermost 2D board a click lands
+  // on. Any further axes are peeled off two at a time into an outer N×N
+  // grid of those boards (covering 4D), and if one axis is left over after
+  // pairing (5D), it becomes a side-by-side row of complete 4D blocks —
+  // the same "one more axis = one more row" move used to go from a single
+  // 2D board (2D) to N boards side by side (3D), just applied one level up.
+  var DIMS = 3;
+  var VIEW = 300, MARGIN = 30;
+  var BOARD_PX = { 3: 260, 4: 150, 5: 100 };
+  var SIZE_OPTIONS = { 3: [3, 5, 7], 4: [3, 4], 5: [3] };
+  var SVGNS = 'http://www.w3.org/2000/svg';
+
+  var layersEl = document.getElementById('layers');
+  var turnIndicator = document.getElementById('turnIndicator');
+  var turnDot = document.getElementById('turnDot');
+  var captureCounts = document.getElementById('captureCounts');
+  var feedback = document.getElementById('feedback');
+  var btnPass = document.getElementById('btnPass');
+  var btnReset = document.getElementById('btnReset');
+  var selDims = document.getElementById('selDims');
+  var selSize = document.getElementById('selSize');
+
+  var N = 5;
+  var cell = (VIEW - 2 * MARGIN) / (N - 1);
+  var game = null;
+  var subBoards = {}; // higher-coords key ("" for 3D... no, see below) -> {stoneLayer}
+  var stoneEls = {};  // linear index -> <circle> element currently on screen
+  var ringIndex = null;
+  var ringEl = null;
+  var aiTimer = null;
+
+  function pointX(x){ return MARGIN + x * cell; }
+  function pointY(y){ return MARGIN + y * cell; }
+  function higherKey(hc){ return hc.join(','); }
+
+  function newGame(n){
+    return {
+      n: n,
+      board: new Array(Math.pow(n, DIMS)).fill(0),
+      turn: 1,
+      captures: { 1: 0, 2: 0 },
+      koBan: null,
+      passCount: 0,
+      lastMoveIndex: null,
+      locked: false
+    };
+  }
+
+  function showFeedback(msg){
+    feedback.textContent = msg;
+    feedback.classList.add('show');
+    clearTimeout(showFeedback._t);
+    showFeedback._t = setTimeout(function(){ feedback.classList.remove('show'); }, 2400);
+  }
+
+  function reasonMessage(reason){
+    if (reason === 'occupied') return 'That point already has a stone.';
+    if (reason === 'suicide') return 'That would leave no liberties — illegal suicide.';
+    if (reason === 'ko') return 'Ko — the lattice looked exactly like that a move ago.';
+    return 'Illegal move.';
+  }
+
+  function pointFromEvent(evt, svgEl){
+    var rect = svgEl.getBoundingClientRect();
+    var scale = VIEW / rect.width;
+    var localX = (evt.clientX - rect.left) * scale;
+    var localY = (evt.clientY - rect.top) * scale;
+    var pad = cell * 0.5;
+    if (localX < MARGIN - pad || localX > VIEW - MARGIN + pad ||
+        localY < MARGIN - pad || localY > VIEW - MARGIN + pad) return null;
+    var gx = Math.round((localX - MARGIN) / cell);
+    var gy = Math.round((localY - MARGIN) / cell);
+    if (gx < 0 || gx >= N || gy < 0 || gy >= N) return null;
+    return { x: gx, y: gy };
+  }
+
+  // Builds one small 2D goban wired up to play at [x, y].concat(higherCoords)
+  // — the one piece of DOM/interaction shared by every dimension.
+  function buildSubBoard(container, higherCoords, labelText){
+    var boardPx = BOARD_PX[DIMS];
+    var wrap = document.createElement('div');
+    wrap.className = 'layer';
+
+    var frame = document.createElement('div');
+    frame.className = 'frame';
+
+    var svg = document.createElementNS(SVGNS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + VIEW + ' ' + VIEW);
+    svg.setAttribute('width', String(boardPx));
+    svg.setAttribute('height', String(boardPx));
+
+    var rect = document.createElementNS(SVGNS, 'rect');
+    rect.setAttribute('x', '0'); rect.setAttribute('y', '0');
+    rect.setAttribute('width', String(VIEW)); rect.setAttribute('height', String(VIEW));
+    rect.setAttribute('fill', '#C8A96A'); rect.setAttribute('rx', '10');
+    svg.appendChild(rect);
+
+    var gridG = document.createElementNS(SVGNS, 'g');
+    gridG.setAttribute('stroke', '#6E5530');
+    gridG.setAttribute('stroke-opacity', '0.55');
+    gridG.setAttribute('stroke-width', '1.3');
+    for (var i = 0; i < N; i++){
+      var a = pointX(i);
+      var l1 = document.createElementNS(SVGNS, 'line');
+      l1.setAttribute('x1', a); l1.setAttribute('y1', MARGIN); l1.setAttribute('x2', a); l1.setAttribute('y2', VIEW - MARGIN);
+      gridG.appendChild(l1);
+      var l2 = document.createElementNS(SVGNS, 'line');
+      l2.setAttribute('x1', MARGIN); l2.setAttribute('y1', a); l2.setAttribute('x2', VIEW - MARGIN); l2.setAttribute('y2', a);
+      gridG.appendChild(l2);
+    }
+    svg.appendChild(gridG);
+
+    var stoneLayer = document.createElementNS(SVGNS, 'g');
+    svg.appendChild(stoneLayer);
+
+    var hoverPreview = document.createElementNS(SVGNS, 'circle');
+    hoverPreview.setAttribute('r', '0');
+    hoverPreview.setAttribute('opacity', '0');
+    hoverPreview.setAttribute('pointer-events', 'none');
+    svg.appendChild(hoverPreview);
+
+    (function(hc, svgEl, hoverEl){
+      svgEl.addEventListener('mousemove', function(evt){
+        if (!game || game.locked){ hoverEl.setAttribute('opacity', '0'); return; }
+        var p = pointFromEvent(evt, svgEl);
+        if (!p){ hoverEl.setAttribute('opacity', '0'); return; }
+        var full = [p.x, p.y].concat(hc);
+        if (game.board[HyperGoEngine.linIndex(full, N)] !== 0){ hoverEl.setAttribute('opacity', '0'); return; }
+        hoverEl.setAttribute('cx', pointX(p.x).toFixed(2));
+        hoverEl.setAttribute('cy', pointY(p.y).toFixed(2));
+        hoverEl.setAttribute('r', (cell * 0.42).toFixed(2));
+        hoverEl.setAttribute('fill', game.turn === 2 ? 'var(--stone-white)' : 'var(--stone-black)');
+        hoverEl.setAttribute('opacity', '0.28');
+      });
+      svgEl.addEventListener('mouseleave', function(){ hoverEl.setAttribute('opacity', '0'); });
+      svgEl.addEventListener('click', function(evt){
+        if (!game || game.locked || game.turn !== 1) return;
+        var p = pointFromEvent(evt, svgEl);
+        if (!p) return;
+        hoverEl.setAttribute('opacity', '0');
+        humanPlay([p.x, p.y].concat(hc));
+      });
+    })(higherCoords, svg, hoverPreview);
+
+    frame.appendChild(svg);
+    wrap.appendChild(frame);
+    if (labelText){
+      var label = document.createElement('div');
+      label.className = 'sub-label';
+      label.textContent = labelText;
+      wrap.appendChild(label);
+    }
+    container.appendChild(wrap);
+
+    subBoards[higherKey(higherCoords)] = { stoneLayer: stoneLayer };
+  }
+
+  function buildBoardDOM(){
+    layersEl.innerHTML = '';
+    subBoards = {};
+    cell = (VIEW - 2 * MARGIN) / (N - 1);
+
+    if (DIMS === 3){
+      for (var z = 0; z < N; z++) buildSubBoard(layersEl, [z], 'z = ' + z);
+    } else if (DIMS === 4){
+      var grid = document.createElement('div');
+      grid.className = 'grid4d';
+      grid.style.gridTemplateColumns = 'repeat(' + N + ', auto)';
+      for (var v = 0; v < N; v++){
+        for (var u = 0; u < N; u++) buildSubBoard(grid, [u, v], 'u=' + u + ', v=' + v);
+      }
+      layersEl.appendChild(grid);
+    } else if (DIMS === 5){
+      for (var w = 0; w < N; w++){
+        var block = document.createElement('div');
+        block.className = 'block5d';
+        var blockLabel = document.createElement('div');
+        blockLabel.className = 'block5d-label';
+        blockLabel.textContent = 'w = ' + w;
+        block.appendChild(blockLabel);
+        var grid5 = document.createElement('div');
+        grid5.className = 'grid4d';
+        grid5.style.gridTemplateColumns = 'repeat(' + N + ', auto)';
+        for (var v2 = 0; v2 < N; v2++){
+          for (var u2 = 0; u2 < N; u2++) buildSubBoard(grid5, [u2, v2, w], 'u=' + u2 + ',v=' + v2);
+        }
+        block.appendChild(grid5);
+        layersEl.appendChild(block);
+      }
+    }
+  }
+
+  function clearAllStones(){
+    var keys = Object.keys(subBoards);
+    for (var i = 0; i < keys.length; i++) subBoards[keys[i]].stoneLayer.innerHTML = '';
+    stoneEls = {};
+    ringEl = null;
+    ringIndex = null;
+  }
+
+  function fadeIn(el, target){
+    el.style.opacity = '0';
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.style.opacity = String(target); }); });
+  }
+
+  function renderAll(){
+    // Full redraw of every sub-board from game.board — simple and correct;
+    // a capture can affect a *different* sub-board than the one just
+    // clicked (a neighbor across any higher-dimensional link), so every
+    // sub-board needs to reflect the current board, not just the one the
+    // human clicked on.
+    var keys = Object.keys(subBoards);
+    for (var ki = 0; ki < keys.length; ki++) subBoards[keys[ki]].stoneLayer.innerHTML = '';
+    stoneEls = {};
+    var oldRingIndex = ringIndex;
+    ringEl = null;
+    var r = cell * 0.42;
+    for (var idx = 0; idx < game.board.length; idx++){
+      var color = game.board[idx];
+      if (color === 0) continue;
+      var p = HyperGoEngine.pointFromIndex(idx, DIMS, N);
+      var sub = subBoards[higherKey(p.slice(2))];
+      if (!sub) continue;
+      var el = document.createElementNS(SVGNS, 'circle');
+      el.setAttribute('cx', pointX(p[0]).toFixed(2));
+      el.setAttribute('cy', pointY(p[1]).toFixed(2));
+      el.setAttribute('r', r.toFixed(2));
+      el.setAttribute('class', 'stone-el');
+      if (color === 1){
+        el.setAttribute('fill', 'var(--stone-black)');
+      } else {
+        el.setAttribute('fill', 'var(--stone-white)');
+        el.setAttribute('stroke', 'var(--stone-black)');
+        el.setAttribute('stroke-width', '1.2');
+      }
+      sub.stoneLayer.appendChild(el);
+      if (idx !== oldRingIndex) fadeIn(el, 1); else el.style.opacity = '1';
+      stoneEls[idx] = el;
+      if (game.lastMoveIndex === idx){
+        var ring = document.createElementNS(SVGNS, 'circle');
+        ring.setAttribute('cx', pointX(p[0]).toFixed(2));
+        ring.setAttribute('cy', pointY(p[1]).toFixed(2));
+        ring.setAttribute('r', (cell * 0.13).toFixed(2));
+        ring.setAttribute('fill', 'none');
+        ring.setAttribute('stroke', color === 1 ? 'var(--stone-white)' : 'var(--stone-black)');
+        ring.setAttribute('stroke-opacity', '0.55');
+        ring.setAttribute('stroke-width', '1.4');
+        sub.stoneLayer.appendChild(ring);
+        ringEl = ring;
+        ringIndex = idx;
+      }
+    }
+  }
+
+  function updateStatusUI(){
+    captureCounts.innerHTML = 'Black captured <b>' + game.captures[1] + '</b> &middot; White captured <b>' + game.captures[2] + '</b>';
+    turnDot.style.background = game.turn === 1 ? 'var(--stone-black)' : 'var(--stone-white)';
+    var label;
+    if (game.locked) label = 'The bot is thinking…';
+    else label = game.turn === 1 ? 'Black to move (you)' : 'White to move (the bot)';
+    turnIndicator.lastChild.textContent = label;
+  }
+
+  function commitMove(p, color){
+    var r = HyperGoEngine.evaluateMove(game.board, game.koBan, p, color, DIMS, N);
+    if (!r.legal) return r;
+    game.board = r.newBoard;
+    game.koBan = r.newKoBan;
+    game.captures[color] += r.captured.length;
+    game.turn = color === 1 ? 2 : 1;
+    game.passCount = 0;
+    game.lastMoveIndex = HyperGoEngine.linIndex(p, N);
+    return r;
+  }
+
+  function commitPass(){
+    game.passCount++;
+    game.turn = game.turn === 1 ? 2 : 1;
+    game.koBan = null;
+    game.lastMoveIndex = null;
+  }
+
+  function humanPlay(p){
+    var r = commitMove(p, 1);
+    if (!r.legal){ showFeedback(reasonMessage(r.reason)); return; }
+    renderAll();
+    updateStatusUI();
+    if (game.passCount >= 2){ showFeedback('Both sides passed.'); return; }
+    scheduleBotReply();
+  }
+
+  function scheduleBotReply(){
+    game.locked = true;
+    updateStatusUI();
+    aiTimer = setTimeout(botReply, 500);
+  }
+
+  function botReply(){
+    var mv = HyperGoEngine.botChooseMove(game.board, game.koBan, 2, DIMS, N);
+    if (mv === null) commitPass(); else commitMove(mv, 2);
+    game.locked = false;
+    renderAll();
+    updateStatusUI();
+    if (game.passCount >= 2) showFeedback('Both sides passed.');
+  }
+
+  btnPass.addEventListener('click', function(){
+    if (!game || game.locked || game.turn !== 1) return;
+    commitPass();
+    renderAll();
+    updateStatusUI();
+    if (game.passCount >= 2){ showFeedback('Both sides passed.'); return; }
+    scheduleBotReply();
+  });
+
+  function resetGame(){
+    clearTimeout(aiTimer);
+    game = newGame(N);
+    clearAllStones();
+    updateStatusUI();
+  }
+  btnReset.addEventListener('click', resetGame);
+
+  function populateSizeOptions(){
+    var opts = SIZE_OPTIONS[DIMS];
+    selSize.innerHTML = opts.map(function(v){
+      return '<option value="' + v + '">' + v + '^' + DIMS + ' (' + Math.pow(v, DIMS) + ' points)</option>';
+    }).join('');
+    if (opts.indexOf(N) === -1) N = opts[0];
+    selSize.value = String(N);
+    selSize.disabled = opts.length <= 1;
+  }
+
+  selDims.addEventListener('change', function(){
+    clearTimeout(aiTimer);
+    DIMS = parseInt(selDims.value, 10);
+    populateSizeOptions();
+    buildBoardDOM();
+    game = newGame(N);
+    updateStatusUI();
+  });
+
+  selSize.addEventListener('change', function(){
+    clearTimeout(aiTimer);
+    N = parseInt(selSize.value, 10);
+    buildBoardDOM();
+    game = newGame(N);
+    updateStatusUI();
+  });
+
+  // ---------- init ----------
+  populateSizeOptions();
+  buildBoardDOM();
+  game = newGame(N);
+  updateStatusUI();
+})();
+</script>
+
+</body>
+</html>
